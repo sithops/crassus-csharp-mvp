@@ -1,0 +1,6 @@
+﻿            protected override void OnMessage(MessageEventArgs Packet)
+            {
+                Console.WriteLine("RX: {0}", Packet.Data);
+
+                Sessions.Broadcast(Packet.Data);
+            }
