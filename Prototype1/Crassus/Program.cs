@@ -21,14 +21,26 @@ namespace Crassus
         [Obsolete]
         public static void Main(string[] args)
         {
+            /*
+             * Add in what channels we want by default
+             */
+
             Channels.Add(@"CHAN1", new channel(@"CHAN1"));
             Channels.Add(@"CHAN2", new channel(@"CHAN2"));
             Channels.Add(@"CHAN3", new channel(@"CHAN3"));
+
+            /*
+             * Start a websocket server on port 8080
+             */
 
             var WebsocketServer = new WebSocketServer("ws://127.0.0.1:8080");
             WebsocketServer.AddWebSocketService("/", () => new ChannelAction("/"));
             WebsocketServer.Start();
             
+            /*
+             * Do a blank ReadKey to stop the server exiting
+             */
+
             Console.ReadKey(true);
             WebsocketServer.Stop();
         }
@@ -39,21 +51,37 @@ namespace Crassus
             private string _prefix = string.Empty;
             private string Channel = string.Empty;
 
+            /* 
+             * No idea?
+             */
+
             public ChannelAction()
                 : this(null)
             {
             }
+
+            /* 
+             * Do not think we need this any more?
+             */
 
             public ChannelAction(string prefix)
             {
                 _prefix = !prefix.IsNullOrEmpty() ? prefix : "/";
             }
 
+            /* 
+             * When a connection is closed remove the memory of what channels its in
+             */
+
             protected override void OnClose(CloseEventArgs Packet)
             {
                 Console.WriteLine("WebSocket closed: {0}", ID);
                 Subscriptions.Remove(ID);
             }
+
+            /* 
+             * When a connection is open make sure to register it a subscription dictionary(think db)
+             */
 
             protected override void OnOpen()
             {
@@ -166,16 +194,10 @@ namespace Crassus
                 }
 
                 if (!SkipBroadcast) {
-                    //packet BroadcastMessage = new packet();
-
-                    //BroadcastMessage.action = @"DATA";
-                    //BroadcastMessage.args = new string[] { Channel, DataPacket.args[1] };
-
-                    //string BroadcastMessageAsString = JsonConvert.SerializeObject(BroadcastMessage);
 
                     /* 
-                     * To get this to work we need to rework the Broadcast call so that it is possible to check
-                     * if each client has acctually subscribed to whatever 'Channel' is being sent to
+                     * No idea of the efficiency of this likely not high, but selective 
+                     * send packets based on if someone is in a channel or not
                      */
 
                     foreach (string SesssionID in Sessions.IDs) {
@@ -194,11 +216,19 @@ namespace Crassus
             }
         }
 
+        /*
+         * What a packet looks like (so JSON can cast)
+         */
+
         public class packet
         {
             public string action { get; set; }
             public string[] args { get; set; }
         }
+
+        /* 
+         * Define how channels are stored, this is really damn small but left like this so can be easily extended
+         */
 
         public class channel
         {
@@ -209,6 +239,9 @@ namespace Crassus
 
             public string name { get; internal set; }
         }
+
+        /* Nyan cat for no real reason :)
+         */
 
         public static string nyan()
         {
