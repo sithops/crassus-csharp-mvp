@@ -97,6 +97,10 @@ namespace Crassus
                 {
                     Console.WriteLine("Attempting to deserialise: '{0}'", Packet.Data);
                     DataPacket = JsonConvert.DeserializeObject<packet>(Packet.Data);
+                    if (DataPacket == null)
+                    {
+                        throw new Newtonsoft.Json.JsonSerializationException();
+                    }
                     Console.WriteLine("Action type is: {0}",DataPacket.action);
                 }
                 catch (Newtonsoft.Json.JsonSerializationException Exception)
