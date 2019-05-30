@@ -1,6 +1,23 @@
-﻿            protected override void OnMessage(MessageEventArgs Packet)
-            {
-                Console.WriteLine("RX: {0}", Packet.Data);
+﻿protected override void OnMessage(MessageEventArgs Packet)
+{
+    Console.WriteLine("RX: {0}", Packet.Data);
 
-                Sessions.Broadcast(Packet.Data);
-            }
+    Sessions.Broadcast(Packet.Data);
+}
+
+			
+//if (Sessions.TryGetSession(SesssionID, out IWebSocketSession Session))
+//{
+//Console.WriteLine("Correctly got session: {0}", Session.ID);
+//}
+else
+{
+    Console.WriteLine("WARNING LOCK() On shared resourced prevented broadcast!");
+}
+
+
+{"action":"SUBSCRIBE","args":["CHAN1"]}
+{"action":"DATA","args":["CHAN1","Test data"]}
+{"action":"UNSUBSCRIBE","args":["CHAN1"]}
+
+Valid channels are CHAN1 CHAN2 CHAN3
