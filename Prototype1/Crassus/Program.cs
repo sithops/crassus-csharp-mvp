@@ -36,7 +36,7 @@ namespace Crassus
              * Start a websocket server on port 8080
              */
 
-            var WebsocketServer = new WebSocketServer("ws://127.0.0.1:8080");
+            var WebsocketServer = new WebSocketServer("ws://0.0.0.0:8080");
             WebsocketServer.AddWebSocketService("/", () => new ChannelAction("/"));
             WebsocketServer.Start();
             
