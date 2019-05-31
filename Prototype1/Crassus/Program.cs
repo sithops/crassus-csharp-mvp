@@ -28,6 +28,7 @@ namespace Crassus
             Channels.Add(@"CHAN1", new channel(@"CHAN1"));
             Channels.Add(@"CHAN2", new channel(@"CHAN2"));
             Channels.Add(@"CHAN3", new channel(@"CHAN3"));
+            Channels.Add(@"NYAN", new channel(@"NYAN",true));
 
             /*
              * Start a websocket server on port 8080
@@ -76,7 +77,11 @@ namespace Crassus
             protected override void OnClose(CloseEventArgs Packet)
             {
                 Console.WriteLine("WebSocket closed: {0}", ID);
+                /*
+                 * tidy up
+                 */
                 Subscriptions.Remove(ID);
+                Sockets.Remove(ID);
             }
 
             /* 
@@ -97,7 +102,11 @@ namespace Crassus
                 {
                     Console.WriteLine("Attempting to deserialise: '{0}'", Packet.Data);
                     DataPacket = JsonConvert.DeserializeObject<packet>(Packet.Data);
-                    if (DataPacket == null)
+                    if (
+                        DataPacket == null 
+                        || DataPacket.action.IsNullOrEmpty()
+                        || DataPacket.args.Length == 0
+                    )
                     {
                         throw new Newtonsoft.Json.JsonSerializationException();
                     }
@@ -115,22 +124,34 @@ namespace Crassus
                 }
 
                 bool SkipBroadcast = false;
+                Channel = DataPacket.args[0].ToUpper();
 
                 switch (DataPacket.action.ToUpper())
                 {
                     case DATA:
                         Channel = DataPacket.args[0].ToUpper();
 
-                        if (DataPacket.args.Length == 0)
+                        /* 
+                         * When anything on the channel with nyan_flag is set, send a nyan cat to everyone
+                         * including the person who sent it
+                         */
+
+                        if (Channels[Channel].flag_nyan) {
+                            packet NyanCat = new packet();
+                            NyanCat.action = @"DATA";
+                            NyanCat.args = new string[] { @"SUCCESS", nyan() };
+                            Send(JsonConvert.SerializeObject(NyanCat));
+                        }
+
+                        if (DataPacket.args.Length < 2)
                         {
                             packet DataStreamError = new packet();
                             DataStreamError.action = @"DATA";
                             DataStreamError.args = new string[] { @"FAIL", @"No DATA" };
                         }
+
                         break;
                     case SUBSCRIBE:
-                        Channel = DataPacket.args[0].ToUpper();
-
                         packet SubscribeResponse = new packet();
                         SubscribeResponse.action = @"SUBSCRIBE";
 
@@ -168,8 +189,6 @@ namespace Crassus
                         SkipBroadcast = true;
                         break;
                     case UNSUBSCRIBE:
-                        Channel = DataPacket.args[0].ToUpper();
-
                         packet UnSubscribeResponse = new packet();
                         UnSubscribeResponse.action = @"UNSUBSCRIBE";
 
@@ -236,9 +255,16 @@ namespace Crassus
 
         public class channel
         {
+            public bool flag_nyan;
+
             public channel(string PassedName)
             {
                 name = PassedName;
+            }
+
+            public channel(string PassedName, bool nyan = false) : this(PassedName)
+            {
+                this.flag_nyan = nyan;
             }
 
             public string name { get; internal set; }
@@ -249,7 +275,8 @@ namespace Crassus
 
         public static string nyan()
         {
-            return @"________▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄______
+            return @"
+________▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄______
 _______█░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░█_____
 _______█░▒▒▒▒▒▒▒▒▒▒▄▀▀▄▒▒▒░░█▄▀▀▄_
 __▄▄___█░▒▒▒▒▒▒▒▒▒▒█▓▓▓▀▄▄▄▄▀▓▓▓█_ 
@@ -258,7 +285,8 @@ _▀▄▄▓▓█░▒▒▒▒▒▒▒▒▒█▓▓▓▄█▓▓▓▄�
 _____▀▀█░▒▒▒▒▒▒▒▒▒█▓▒▒▓▄▓▓▄▓▓▄▓▒▒█ 
 ______▄█░░▒▒▒▒▒▒▒▒▒▀▄▓▓▀▀▀▀▀▀▀▓▄▀_ 
 ____▄▀▓▀█▄▄▄▄▄▄▄▄▄▄▄▄██████▀█▀▀___ 
-____█▄▄▀_█▄▄▀_______█▄▄▀_▀▄▄█_____";
+____█▄▄▀_█▄▄▀_______█▄▄▀_▀▄▄█_____
+";
         }
     }
 }
