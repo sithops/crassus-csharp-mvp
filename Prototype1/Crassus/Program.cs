@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace Crassus
 {
@@ -10,8 +12,8 @@ namespace Crassus
     {
         // Horrible globals that are going to cause god knows how many memcpy's
         static Dictionary<string, channel> Channels = new Dictionary<string, channel>();
-        static Dictionary<string, Dictionary<string,bool>> Subscriptions = new Dictionary<string, Dictionary<string, bool>>();
-        static Dictionary<string, WebSocket> Sockets = new Dictionary<string, WebSocket>();
+        static ConcurrentDictionary<string, Dictionary<string,bool>> Subscriptions = new ConcurrentDictionary<string, Dictionary<string, bool>>();
+        static ConcurrentDictionary<string, WebSocket> Sockets = new ConcurrentDictionary<string, WebSocket>();
 
         // Horrible way of making out switch work, thank god for POCs
         const string SUBSCRIBE = @"SUBSCRIBE";
@@ -80,8 +82,9 @@ namespace Crassus
                 /*
                  * tidy up
                  */
-                Subscriptions.Remove(ID);
-                Sockets.Remove(ID);
+                
+                while (!Subscriptions.TryRemove(ID, out _)) { Thread.Sleep(1);  }
+                while (!Sockets.TryRemove(ID, out _)) { Thread.Sleep(1); }
             }
 
             /* 
@@ -91,7 +94,15 @@ namespace Crassus
             protected override void OnOpen()
             {
                 Console.WriteLine("WebSocket open: {0}", ID);
-                Subscriptions.Add(ID, new Dictionary<string, bool>());
+                while (
+                    !Subscriptions.TryAdd(
+                        ID, 
+                        new Dictionary<string, bool>()
+                    )
+                )
+                {
+                    Thread.Sleep(1);
+                }
             }
 
             protected override void OnMessage(MessageEventArgs Packet)
@@ -157,7 +168,15 @@ namespace Crassus
 
                         if (!Sockets.ContainsKey(ID))
                         {
-                            Sockets.Add(ID, Context.WebSocket);
+                            while (!
+                                Sockets.TryAdd(
+                                    ID,
+                                    Context.WebSocket
+                                )
+                            )
+                            {
+                                Thread.Sleep(1);
+                            }
                         }
 
                         if (!Channels.ContainsKey(Channel))
@@ -255,8 +274,6 @@ namespace Crassus
 
         public class channel
         {
-            public bool flag_nyan;
-
             public channel(string PassedName)
             {
                 name = PassedName;
@@ -268,6 +285,7 @@ namespace Crassus
             }
 
             public string name { get; internal set; }
+            public bool flag_nyan { get; internal set; }
         }
 
         /* Nyan cat for no real reason :)
