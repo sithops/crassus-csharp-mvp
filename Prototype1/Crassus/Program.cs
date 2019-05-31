@@ -240,6 +240,9 @@ namespace Crassus
                     /* 
                      * No idea of the efficiency of this likely not high, but selective 
                      * send packets based on if someone is in a channel or not
+                     * 
+                     * Really should dump a [WebSocket,DATA] into a FIFO queue and use a thread 
+                     * for processing that queue, incase a WS goes missing
                      */
 
                     foreach (string SesssionID in Sessions.IDs) {
@@ -251,7 +254,14 @@ namespace Crassus
                         if (Subscriptions[SesssionID].ContainsKey(Channel))
                         {
                             Console.WriteLine("Send datapacket to {0}", SesssionID);
-                            Sockets[SesssionID].Send(Packet.Data);
+                            try
+                            {
+                                Sockets[SesssionID].Send(Packet.Data);
+                            }
+                            catch (Exception exception)
+                            {
+                                Console.WriteLine("Exception avoided in send: {0}", exception.Message);
+                            }
                         }
                     }
                 }
