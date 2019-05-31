@@ -78,7 +78,7 @@ namespace Crassus
 
             protected override void OnClose(CloseEventArgs Packet)
             {
-                Console.WriteLine("WebSocket closed: {0}", ID);
+                Console.WriteLine("[{0}] Closed", ID);
                 /*
                  * tidy up
                  */
@@ -93,7 +93,7 @@ namespace Crassus
 
             protected override void OnOpen()
             {
-                Console.WriteLine("WebSocket open: {0}", ID);
+                Console.WriteLine("[{0}] Open", ID);
                 while (
                     !Subscriptions.TryAdd(
                         ID, 
@@ -109,7 +109,7 @@ namespace Crassus
             {
                 packet DataPacket = new packet();
 
-                Console.WriteLine("Attempting to deserialise: '{0}'", Packet.Data);
+                Console.WriteLine("[{0}] JSON-Deserialize: '{1}'", ID, Packet.Data);
 
                 try
                 {
@@ -125,16 +125,16 @@ namespace Crassus
                 }
                 catch (Newtonsoft.Json.JsonSerializationException Exception)
                 {
-                    Console.WriteLine("An exception was caused when deserializing '{0}', the exception raised was: '{1}'", Packet.Data, Exception.Message);
+                    Console.WriteLine("[{0}] An exception was caused when deserializing '{1}', the exception raised was: '{2}'", ID, Packet.Data, Exception.Message);
                     return;
                 }
                 catch (Newtonsoft.Json.JsonReaderException Exception)
                 {
-                    Console.WriteLine("An exception was caused when deserializing '{0}', the exception raised was: '{1}'", Packet.Data, Exception.Message);
+                    Console.WriteLine("[{0}] An exception was caused when deserializing '{1}', the exception raised was: '{2}'", ID, Packet.Data, Exception.Message);
                     return;
                 }
 
-                Console.WriteLine("Action type is: {0}", DataPacket.action);
+                Console.WriteLine("[{0}] Action: {1}", ID, DataPacket.action);
 
                 bool SkipBroadcast = false;
                 Channel = DataPacket.args[0].ToUpper();
@@ -186,27 +186,25 @@ namespace Crassus
                             SubscribeResponse.args = new string[] { @"FAIL", Channel, @"No such channel" };
                             Send(JsonConvert.SerializeObject(SubscribeResponse));
 
-                            Console.WriteLine("Cannot subscribe client to channel, channel does not exist: '{0}'", Channel);
+                            Console.WriteLine("[{0}] Cannot subscribe client to channel, channel does not exist: '{1}'", ID, Channel);
+                        }
+                        else if (Subscriptions[ID].ContainsKey(Channel))
+                        {
+                            SubscribeResponse.args = new string[] { @"FAIL", Channel, @"You are already subscribed" };
+                            Send(JsonConvert.SerializeObject(SubscribeResponse));
+
+                            Console.WriteLine("[{0}] Cannot subscribe client to channel, they are already in it: '{1}'", ID, Channel);
                         }
                         else
                         {
-                            if (Subscriptions[ID].ContainsKey(Channel))
-                            {
-                                SubscribeResponse.args = new string[] { @"FAIL", Channel, @"You are already subscribed" };
-                                Send(JsonConvert.SerializeObject(SubscribeResponse));
+                            SubscribeResponse.args = new string[] { @"SUCCESS", Channel };
+                            Send(JsonConvert.SerializeObject(SubscribeResponse));
 
-                                Console.WriteLine("Cannot subscribe client to channel, they are already in it: '{0}'", Channel);
-                            }
-                            else
-                            {
-                                SubscribeResponse.args = new string[] { @"SUCCESS", Channel };
-                                Send(JsonConvert.SerializeObject(SubscribeResponse));
+                            Subscriptions[ID].Add(Channel, true);
 
-                                Subscriptions[ID].Add(Channel, true);
-
-                                Console.WriteLine("Client subscribed to channel: '{0}'", Channel);
-                            }
+                            Console.WriteLine("[{0}] Client subscribed to channel: '{1}'", ID, Channel);
                         }
+
                         SkipBroadcast = true;
                         break;
                     case UNSUBSCRIBE:
@@ -220,19 +218,19 @@ namespace Crassus
 
                             Subscriptions[ID].Remove(Channel);
 
-                            Console.WriteLine("Client unsubscribed from channel: '{0}'", Channel);
+                            Console.WriteLine("[{0}] Client unsubscribed from channel: '{1}'", ID,  Channel);
                         }
                         else
                         {
                             UnSubscribeResponse.args = new string[] { @"FAIL", Channel, @"You are already subscribed" };
                             Send(JsonConvert.SerializeObject(UnSubscribeResponse));
 
-                            Console.WriteLine("Cannot unsubscribe client from channel, they are not in it: '{0}'", Channel);
+                            Console.WriteLine("[{0}] Cannot unsubscribe client from channel, they are not in it: '{1}'", ID, Channel);
                         }
                         SkipBroadcast = true;
                         break;
                     default:
-                        Console.WriteLine("Got a request for action: {0}, no idea what it is",DataPacket.action.ToUpper());
+                        Console.WriteLine("[{0}] Got a request for action: {1}, no idea what it is", ID, DataPacket.action.ToUpper());
                         SkipBroadcast = true;
                         break;
                 }
@@ -248,21 +246,21 @@ namespace Crassus
                      */
 
                     foreach (string SesssionID in Sessions.IDs) {
-                        Console.WriteLine("Sender session({0}), target session({1})",ID,SesssionID);
+                        Console.WriteLine("[{0}] Target session({2})", ID,SesssionID);
                         if (ID.Equals(SesssionID))
                         {
                             continue;
                         }
                         if (Subscriptions[SesssionID].ContainsKey(Channel))
                         {
-                            Console.WriteLine("Send datapacket to {0}", SesssionID);
+                            Console.WriteLine("[{0}] Send->{1}", ID, SesssionID);
                             try
                             {
                                 Sockets[SesssionID].Send(Packet.Data);
                             }
                             catch (Exception exception)
                             {
-                                Console.WriteLine("Exception avoided in send: {0}", exception.Message);
+                                Console.WriteLine("[{0}] Exception avoided in send: {1}", ID, exception.Message);
                             }
                         }
                     }
