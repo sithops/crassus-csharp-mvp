@@ -13,19 +13,19 @@ namespace Crassus_Plugin_Benchmark_Client1
 
         static void Main(string[] args)
         {
-            Dictionary<string, WebSocket> Sockets = new Dictionary<string, WebSocket>();
+            Dictionary<int, WebSocket> Sockets = new Dictionary<int, WebSocket>();
 
             packet JSONPacket = new packet();
 
-            JSONPacket.action = @"SUBSCRIBE1";
+            JSONPacket.action = @"SUBSCRIBE";
             JSONPacket.args = new string[] { "CHAN1" };
             JSONPackets.Add("SUBSCRIBE1", JsonConvert.SerializeObject(JSONPacket));
 
-            JSONPacket.action = @"SUBSCRIBE2";
+            JSONPacket.action = @"SUBSCRIBE";
             JSONPacket.args = new string[] { "CHAN2" };
             JSONPackets.Add("SUBSCRIBE2", JsonConvert.SerializeObject(JSONPacket));
 
-            JSONPacket.action = @"SUBSCRIBE3";
+            JSONPacket.action = @"SUBSCRIBE";
             JSONPacket.args = new string[] { "CHAN3" };
             JSONPackets.Add("SUBSCRIBE3", JsonConvert.SerializeObject(JSONPacket));
 
@@ -38,14 +38,47 @@ namespace Crassus_Plugin_Benchmark_Client1
 
             JSONPackets.Add("DATA", JsonConvert.SerializeObject(JSONPacket));
 
-            for (int i = 0; i < 2; i++)
+            JSONPacket.action = @"ECHO";
+            JSONPacket.args = new string[] { "ECHO DATA" };
+
+            JSONPackets.Add("ECHO", JsonConvert.SerializeObject(JSONPacket));
+
+            for (int SocketNum = 0; SocketNum < 1; SocketNum++)
             {
-                WebSocket websocket = new WebSocket("ws://rice.daemon.space:8080");
-                websocket.OnMessage += ((sender, data) => new WSClient());
-                //websocket.OnOpen += ((sender, data) => new WSClient());
-                //websocket.OnClose += ((sender, data) => new WSClient());
+                Sockets.Add(SocketNum,new WebSocket("ws://rice.daemon.space:8080"));
+                WebSocket websocket = Sockets[SocketNum];
+
+                websocket.OnMessage += (sender, data) =>
+                {
+                    packet DataPacket = JsonConvert.DeserializeObject<packet>(data.Data);
+                    Console.WriteLine("DATA: {0}",DataPacket.args[0]);
+
+                    JSONPacket.action = @"DATA";
+                    JSONPacket.args = new string[] { "SOMEDATA" };
+
+                    if (boolean_random())
+                    {
+                        websocket.Send(JsonConvert.SerializeObject(JSONPacket));
+                    }
+                };
+
+                websocket.OnOpen += (sender, data) =>
+                {
+                    for (int ChannelNumber = 1; ChannelNumber < 4; ChannelNumber++)
+                    {
+                        if (boolean_random())
+                        {
+                            websocket.Send(JSONPackets["SUBSCRIBE" + ChannelNumber]);
+                        }
+                    }
+                    websocket.Send(JSONPackets["ECHO"]);
+                };
+
+                websocket.OnClose += (sender, data) =>
+                {
+                };
+
                 websocket.Connect();
-                //websocket.Send(JSONPackets["SUBSCRIBE"]);
             }
 
             //websocket.Send(UnSubscribePacketAsText);
@@ -66,36 +99,6 @@ namespace Crassus_Plugin_Benchmark_Client1
                 return true;
             }
             return false;
-        }
-
-
-        protected void OnOpen()
-        {
-            Console.WriteLine("x");
-            for (int i = 1; i < 4; i++)
-            {
-                Console.WriteLine("ID {0}", i);
-                if (boolean_random())
-                {
-                    string SPacket = "SUBSCRIBE" + i;
-                    //Send(JSONPackets["SPacket"]);
-                }
-            }
-        }
-        public class WSClient : WebSocketBehavior
-        {
-            protected override void OnMessage(MessageEventArgs Packet)
-            {
-                Console.WriteLine("[{0}] Data: {1}", ID, Packet.Data);
-            }
-
-            
-
-            protected override void OnClose(CloseEventArgs Packet)
-            {
-
-            }
-            
         }
     }
 }

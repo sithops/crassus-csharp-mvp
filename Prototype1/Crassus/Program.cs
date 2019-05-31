@@ -142,25 +142,27 @@ namespace Crassus
                 switch (DataPacket.action.ToUpper())
                 {
                     case DATA:
-                        Channel = DataPacket.args[0].ToUpper();
-
                         /* 
                          * When anything on the channel with nyan_flag is set, send a nyan cat to everyone
                          * including the person who sent it
                          */
 
-                        if (Channels[Channel].flag_nyan) {
-                            packet NyanCat = new packet();
-                            NyanCat.action = @"DATA";
-                            NyanCat.args = new string[] { @"SUCCESS", nyan() };
-                            Send(JsonConvert.SerializeObject(NyanCat));
-                        }
-
-                        if (DataPacket.args.Length < 2)
+                        if (DataPacket.args.Length < 2 || !Channels.ContainsKey(Channel))
                         {
                             packet DataStreamError = new packet();
                             DataStreamError.action = @"DATA";
                             DataStreamError.args = new string[] { @"FAIL", @"No DATA" };
+
+                            Send(JsonConvert.SerializeObject(DataStreamError));
+
+                            SkipBroadcast = true;
+                        }
+                        else (Channels[Channel].flag_nyan) {
+                            packet NyanCat = new packet();
+                            NyanCat.action = @"DATA";
+                            NyanCat.args = new string[] { @"SUCCESS", nyan() };
+
+                            Send(JsonConvert.SerializeObject(NyanCat));
                         }
 
                         break;
@@ -255,7 +257,7 @@ namespace Crassus
                      */
 
                     foreach (string SesssionID in Sessions.IDs) {
-                        Console.WriteLine("[{0}] Target session({2})", ID,SesssionID);
+                        Console.WriteLine("[{0}] Target session({1})", ID,SesssionID);
                         if (ID.Equals(SesssionID))
                         {
                             continue;
