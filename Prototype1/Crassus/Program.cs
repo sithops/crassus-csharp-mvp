@@ -15,10 +15,11 @@ namespace Crassus
         static ConcurrentDictionary<string, Dictionary<string,bool>> Subscriptions = new ConcurrentDictionary<string, Dictionary<string, bool>>();
         static ConcurrentDictionary<string, WebSocket> Sockets = new ConcurrentDictionary<string, WebSocket>();
 
-        // Horrible way of making out switch work, thank god for POCs
+        // Horrible way of making our switch work, thank god for POCs
         const string SUBSCRIBE = @"SUBSCRIBE";
         const string UNSUBSCRIBE = @"UNSUBSCRIBE";
         const string DATA = @"DATA";
+        const string ECHO = @"ECHO";
 
         [Obsolete]
         public static void Main(string[] args)
@@ -50,7 +51,6 @@ namespace Crassus
 
         public class ChannelAction : WebSocketBehavior
         {
-            private string _name = string.Empty;
             private string _prefix = string.Empty;
             private string Channel = string.Empty;
 
@@ -163,6 +163,15 @@ namespace Crassus
                             DataStreamError.args = new string[] { @"FAIL", @"No DATA" };
                         }
 
+                        break;
+                    case ECHO:
+                        packet EchoPacket = new packet();
+                        EchoPacket.action = @"ECHO";
+                        EchoPacket.args = new string[] { DataPacket.args[0] };
+
+                        Send(JsonConvert.SerializeObject(EchoPacket));
+
+                        SkipBroadcast = true;
                         break;
                     case SUBSCRIBE:
                         packet SubscribeResponse = new packet();
