@@ -21,6 +21,12 @@ namespace Crassus
         const string DATA = @"DATA";
         const string ECHO = @"ECHO";
 
+        // For metrics
+        static uint TotalSent = 0;
+        static uint TotalBroadcast = 0;
+        static uint TotalDisplay = 1024;
+        static DateTime StartTime = DateTime.Now;
+
         [Obsolete]
         public static void Main(string[] args)
         {
@@ -78,7 +84,7 @@ namespace Crassus
 
             protected override void OnClose(CloseEventArgs Packet)
             {
-                Console.WriteLine("[{0}] Closed", ID);
+                //Console.WriteLine("[{0}] Closed", ID);
                 /*
                  * tidy up
                  */
@@ -93,7 +99,7 @@ namespace Crassus
 
             protected override void OnOpen()
             {
-                Console.WriteLine("[{0}] Open", ID);
+                //Console.WriteLine("[{0}] Open", ID);
                 while (
                     !Subscriptions.TryAdd(
                         ID, 
@@ -109,7 +115,19 @@ namespace Crassus
             {
                 packet DataPacket = new packet();
 
-                Console.WriteLine("[{0}] JSON-Deserialize: '{1}'", ID, Packet.Data);
+                //Console.WriteLine("[{0}] JSON-Deserialize: '{1}'", ID, Packet.Data);
+
+                if (TotalDisplay-- == 0)
+                {
+                    TotalDisplay = 1024;
+                    double DiffInSeconds = (DateTime.Now - StartTime).TotalSeconds;
+                    Console.WriteLine(
+                        "In {0} seconds I have processed: {1} Sends and {2} Broadcasts",
+                        DiffInSeconds,
+                        TotalSent,
+                        TotalBroadcast
+                    );
+                }
 
                 try
                 {
@@ -134,7 +152,7 @@ namespace Crassus
                     return;
                 }
 
-                Console.WriteLine("[{0}] Action: {1}", ID, DataPacket.action);
+                //Console.WriteLine("[{0}] Action: {1}", ID, DataPacket.action);
 
                 bool SkipBroadcast = false;
                 Channel = DataPacket.args[0].ToUpper();
@@ -147,6 +165,8 @@ namespace Crassus
                          * including the person who sent it
                          */
 
+
+
                         if (DataPacket.args.Length < 2 || !Channels.ContainsKey(Channel))
                         {
                             packet DataStreamError = new packet();
@@ -157,11 +177,10 @@ namespace Crassus
 
                             SkipBroadcast = true;
                         }
-                        else (Channels[Channel].flag_nyan) {
+                        else if (Channels[Channel].flag_nyan) {
                             packet NyanCat = new packet();
                             NyanCat.action = @"DATA";
                             NyanCat.args = new string[] { @"SUCCESS", nyan() };
-
                             Send(JsonConvert.SerializeObject(NyanCat));
                         }
 
@@ -213,7 +232,7 @@ namespace Crassus
 
                             Subscriptions[ID].Add(Channel, true);
 
-                            Console.WriteLine("[{0}] Client subscribed to channel: '{1}'", ID, Channel);
+                            //Console.WriteLine("[{0}] Client subscribed to channel: '{1}'", ID, Channel);
                         }
 
                         SkipBroadcast = true;
@@ -229,7 +248,7 @@ namespace Crassus
 
                             Subscriptions[ID].Remove(Channel);
 
-                            Console.WriteLine("[{0}] Client unsubscribed from channel: '{1}'", ID,  Channel);
+                            //Console.WriteLine("[{0}] Client unsubscribed from channel: '{1}'", ID,  Channel);
                         }
                         else
                         {
@@ -256,17 +275,21 @@ namespace Crassus
                      * for processing that queue, incase a WS goes missing
                      */
 
+                    //Thread.Sleep(1);
+
                     foreach (string SesssionID in Sessions.IDs) {
-                        Console.WriteLine("[{0}] Target session({1})", ID,SesssionID);
+                        //Console.WriteLine("[{0}] Target session({1})", ID,SesssionID);
+                        TotalBroadcast++;
                         if (ID.Equals(SesssionID))
                         {
                             continue;
                         }
                         if (Subscriptions[SesssionID].ContainsKey(Channel))
                         {
-                            Console.WriteLine("[{0}] Send->{1}", ID, SesssionID);
+                            //Console.WriteLine("[{0}] Send->{1}", ID, SesssionID);
                             try
                             {
+                                TotalSent++;
                                 Sockets[SesssionID].Send(Packet.Data);
                             }
                             catch (Exception exception)
@@ -302,7 +325,7 @@ namespace Crassus
 
             public channel(string PassedName, bool nyan = false) : this(PassedName)
             {
-                this.flag_nyan = nyan;
+                flag_nyan = nyan;
             }
 
             public string name { get; internal set; }

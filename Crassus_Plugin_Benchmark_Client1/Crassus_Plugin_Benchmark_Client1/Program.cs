@@ -33,17 +33,12 @@ namespace Crassus_Plugin_Benchmark_Client1
 
             JSONPackets.Add("UNSUBSCRIBE", JsonConvert.SerializeObject(JSONPacket));
 
-            JSONPacket.action = @"DATA";
-            JSONPacket.args = new string[] { "DATA Block" };
-
-            JSONPackets.Add("DATA", JsonConvert.SerializeObject(JSONPacket));
-
             JSONPacket.action = @"ECHO";
             JSONPacket.args = new string[] { "ECHO DATA" };
 
             JSONPackets.Add("ECHO", JsonConvert.SerializeObject(JSONPacket));
 
-            for (int SocketNum = 0; SocketNum < 1; SocketNum++)
+            for (int SocketNum = 0; SocketNum < 4; SocketNum++)
             {
                 Sockets.Add(SocketNum,new WebSocket("ws://rice.daemon.space:8080"));
                 WebSocket websocket = Sockets[SocketNum];
@@ -51,14 +46,29 @@ namespace Crassus_Plugin_Benchmark_Client1
                 websocket.OnMessage += (sender, data) =>
                 {
                     packet DataPacket = JsonConvert.DeserializeObject<packet>(data.Data);
-                    Console.WriteLine("DATA: {0}",DataPacket.args[0]);
 
-                    JSONPacket.action = @"DATA";
-                    JSONPacket.args = new string[] { "SOMEDATA" };
-
-                    if (boolean_random())
+                    if (DataPacket.action.Equals("SUBSCRIBE"))
                     {
-                        websocket.Send(JsonConvert.SerializeObject(JSONPacket));
+                        packet JSONPacketData = new packet();
+                        JSONPacketData.action = @"DATA";
+                        JSONPacketData.args = new string[] { DataPacket.args[1], "DATA Block" };
+
+                        websocket.Send(JsonConvert.SerializeObject(JSONPacketData));
+                    }
+                    else if (boolean_random()) { 
+                        {
+                            JSONPacket.action = @"DATA";
+                            JSONPacket.args = new string[] { DataPacket.args[0], "SOMEDATA" };
+
+                            try
+                            {
+                                websocket.Send(JsonConvert.SerializeObject(JSONPacket));
+                            }
+                            catch
+                            {
+
+                            }
+                        }
                     }
                 };
 
@@ -71,7 +81,6 @@ namespace Crassus_Plugin_Benchmark_Client1
                             websocket.Send(JSONPackets["SUBSCRIBE" + ChannelNumber]);
                         }
                     }
-                    websocket.Send(JSONPackets["ECHO"]);
                 };
 
                 websocket.OnClose += (sender, data) =>
@@ -80,8 +89,6 @@ namespace Crassus_Plugin_Benchmark_Client1
 
                 websocket.Connect();
             }
-
-            //websocket.Send(UnSubscribePacketAsText);
 
             Console.ReadKey(true);
         }
@@ -94,7 +101,7 @@ namespace Crassus_Plugin_Benchmark_Client1
 
         static bool boolean_random()
         {
-            if (RandomGenerator.Next(100) > 50)
+            if (RandomGenerator.Next(100) > 25)
             {
                 return true;
             }
