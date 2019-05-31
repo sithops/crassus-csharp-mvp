@@ -109,9 +109,10 @@ namespace Crassus
             {
                 packet DataPacket = new packet();
 
+                Console.WriteLine("Attempting to deserialise: '{0}'", Packet.Data);
+
                 try
                 {
-                    Console.WriteLine("Attempting to deserialise: '{0}'", Packet.Data);
                     DataPacket = JsonConvert.DeserializeObject<packet>(Packet.Data);
                     if (
                         DataPacket == null 
@@ -121,7 +122,6 @@ namespace Crassus
                     {
                         throw new Newtonsoft.Json.JsonSerializationException();
                     }
-                    Console.WriteLine("Action type is: {0}",DataPacket.action);
                 }
                 catch (Newtonsoft.Json.JsonSerializationException Exception)
                 {
@@ -133,6 +133,8 @@ namespace Crassus
                     Console.WriteLine("An exception was caused when deserializing '{0}', the exception raised was: '{1}'", Packet.Data, Exception.Message);
                     return;
                 }
+
+                Console.WriteLine("Action type is: {0}", DataPacket.action);
 
                 bool SkipBroadcast = false;
                 Channel = DataPacket.args[0].ToUpper();
@@ -304,16 +306,21 @@ namespace Crassus
         public static string nyan()
         {
             return @"
-________▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄______
-_______█░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░█_____
-_______█░▒▒▒▒▒▒▒▒▒▒▄▀▀▄▒▒▒░░█▄▀▀▄_
-__▄▄___█░▒▒▒▒▒▒▒▒▒▒█▓▓▓▀▄▄▄▄▀▓▓▓█_ 
-█▓▓█▄▄█░▒▒▒▒▒▒▒▒▒▄▀▓▓▓▓▓▓▓▓▓▓▓▓▀▄_ 
-_▀▄▄▓▓█░▒▒▒▒▒▒▒▒▒█▓▓▓▄█▓▓▓▄▓▄█▓▓█_ 
-_____▀▀█░▒▒▒▒▒▒▒▒▒█▓▒▒▓▄▓▓▄▓▓▄▓▒▒█ 
-______▄█░░▒▒▒▒▒▒▒▒▒▀▄▓▓▀▀▀▀▀▀▀▓▄▀_ 
-____▄▀▓▀█▄▄▄▄▄▄▄▄▄▄▄▄██████▀█▀▀___ 
-____█▄▄▀_█▄▄▀_______█▄▄▀_▀▄▄█_____
+   ,_____ ,              
+  ,._ ,_. 7\             
+ j `-'     /             
+ |o_, o    \             
+.`_y_`-,'   !            
+|/   `, `._ `-,          
+|_     \   _.'*\         
+  >--,-'`-'*_*'``---.    
+  |\_* _*'-' NYAN    '   
+ /    `      UPGRADED \  
+ \.         _ .       /  
+  '`._     /   )     /   
+   \  |`-,-|  /c-'7 /    
+    ) \ (_,| |   / (_    
+   ((_/   ((_;)  \_)))   
 ";
         }
     }
