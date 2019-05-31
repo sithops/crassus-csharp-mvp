@@ -298,7 +298,8 @@ namespace Crassus
             public bool flag_nyan { get; internal set; }
         }
 
-        /* Nyan cat for no real reason :)
+        /* 
+         * Nyan cat for no real reason :)
          */
 
         public static string nyan()
