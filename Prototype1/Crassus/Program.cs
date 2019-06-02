@@ -18,7 +18,7 @@ namespace Crassus
         // Horrible way of making our switch work, thank god for POCs
         const string SUBSCRIBE = @"SUBSCRIBE";
         const string UNSUBSCRIBE = @"UNSUBSCRIBE";
-        const string DATA = @"DATA";
+        const string TELL = @"TELL";
         const string ECHO = @"ECHO";
 
         // For metrics
@@ -159,7 +159,7 @@ namespace Crassus
 
                 switch (DataPacket.action.ToUpper())
                 {
-                    case DATA:
+                    case TELL:
                         /* 
                          * When anything on the channel with nyan_flag is set, send a nyan cat to everyone
                          * including the person who sent it
@@ -170,8 +170,8 @@ namespace Crassus
                         if (DataPacket.args.Length < 2 || !Channels.ContainsKey(Channel))
                         {
                             packet DataStreamError = new packet();
-                            DataStreamError.action = @"DATA";
-                            DataStreamError.args = new string[] { @"FAIL", @"No DATA" };
+                            DataStreamError.action = @"TELL";
+                            DataStreamError.args = new string[] { @"FAIL", @"No TELL" };
 
                             Send(JsonConvert.SerializeObject(DataStreamError));
 
@@ -179,7 +179,7 @@ namespace Crassus
                         }
                         else if (Channels[Channel].flag_nyan) {
                             packet NyanCat = new packet();
-                            NyanCat.action = @"DATA";
+                            NyanCat.action = @"TELL";
                             NyanCat.args = new string[] { @"SUCCESS", nyan() };
                             Send(JsonConvert.SerializeObject(NyanCat));
                         }
@@ -243,7 +243,7 @@ namespace Crassus
 
                         if (Subscriptions[ID].ContainsKey(Channel))
                         {
-                            UnSubscribeResponse.args = new string[] { @"SUCCESS", Channel };
+                            UnSubscribeResponse.args = new string[] { Channel,@"SUCCESS" };
                             Send(JsonConvert.SerializeObject(UnSubscribeResponse));
 
                             Subscriptions[ID].Remove(Channel);
@@ -252,7 +252,7 @@ namespace Crassus
                         }
                         else
                         {
-                            UnSubscribeResponse.args = new string[] { @"FAIL", Channel, @"You are already subscribed" };
+                            UnSubscribeResponse.args = new string[] { Channel, @"FAIL", @"You are already subscribed" };
                             Send(JsonConvert.SerializeObject(UnSubscribeResponse));
 
                             Console.WriteLine("[{0}] Cannot unsubscribe client from channel, they are not in it: '{1}'", ID, Channel);
@@ -271,7 +271,7 @@ namespace Crassus
                      * No idea of the efficiency of this likely not high, but selective 
                      * send packets based on if someone is in a channel or not
                      * 
-                     * Really should dump a [WebSocket,DATA] into a FIFO queue and use a thread 
+                     * Really should dump a [WebSocket,TELL] into a FIFO queue and use a thread 
                      * for processing that queue, incase a WS goes missing
                      */
 
@@ -310,6 +310,7 @@ namespace Crassus
         {
             public string action { get; set; }
             public string[] args { get; set; }
+
         }
 
         /* 
