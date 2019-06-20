@@ -1,80 +1,83 @@
 ﻿using System;
 using System.Collections.Generic;
-using WebSocketSharp;
-using WebSocketSharp.Server;
-using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Threading;
-using stable;
+using System.Linq;
+
+using WebSocketSharp;
+using WebSocketSharp.Server;
+
+using Newtonsoft.Json.Linq;
+
+using CrassusProtocols;
+using CrassusClasses;
+
 
 namespace Crassus
 {
     public class Program
     {
         // Number of workers to use
-        const int WorkerCount = 8;
-        const int BufferSize = 1024;
+        const int WorkerCount = 4;
+        const int BufferSize = 4096;
 
-        static ConcurrentQueue<Packet> InboundPackets = new ConcurrentQueue<Packet>();
-        static int[] QueueSizes;
+        // A static random generator object
+        static Random random = new Random();
+
+        // Optimizations for queue size lookups
+        static uint[] QueueSizes;
+
+        // Where we place our global objects (having no faster or better way to do it)
         static List<Worker> Workers = new List<Worker>();
+        static Dictionary<string, WebSocket> ID2WebSocket = new Dictionary<string, WebSocket>();
+        //static Dictionary<string,List<string>> Subscriptions = new Dictionary<string,List<string>>();
 
+        //static ConcurrentDictionary<string, int> Channels = new ConcurrentDictionary<string, int>();
+        //static ConcurrentDictionary<Plugin,int> Plugins = new ConcurrentDictionary<Plugin,int>();
+
+        // It is all here, all you need is a way to reference other sockets in a broadcast
+        // And also keep some form of fast lookup between connections
+
+        [Obsolete]
         public static void Main(string[] args)
         {
-            uint PacketID   = 0;
-            int WorkerID    = 0;
+            int WorkerID = 0;
 
-            QueueSizes = new int[WorkerCount];
+            QueueSizes = new uint[WorkerCount];
 
             DateTime StartTime = DateTime.Now;
 
+            // Create the workers but do not start them yet
             for (
-                int Iterator = 0; 
-                Iterator < WorkerCount; 
+                int Iterator = 0;
+                Iterator < WorkerCount;
                 Iterator++
             )
             {
                 QueueSizes[Iterator] = 0;
 
-                Worker Worker   = new Worker();
-                Worker.Thread   = new Thread(new ParameterizedThreadStart(Consumer));
-                Worker.Queue    = new BlockingCollection<Packet>();
-                Worker.ID       = WorkerID;
-                Worker.Thread.Start(WorkerID++);
+                Worker Worker = new Worker();
+                Worker.Thread = new Thread(new ParameterizedThreadStart(Consumer));
+                Worker.Queue = new BlockingCollection<Protocol[]>();
+                Worker.ID = WorkerID++;
                 Workers.Add(Worker);
             }
 
-            // Feed the wheel
-            while(true)
+            // Start the websocket endpoint
+            WebSocketServer WebsocketServer = new WebSocketServer("ws://0.0.0.0:8080");
+            WebsocketServer.AddWebSocketService("/", () => new ChannelAction("/"));
+            WebsocketServer.Start();
+
+            // Start the workers off
+            for (
+                int Iterator = 0;
+                Iterator < WorkerCount;
+                Iterator++
+            )
             {
-                for (
-                    int Iterator = 0;
-                    Iterator < WorkerCount;
-                    Iterator++
-                )
-                {
-                    int FillDiff = BufferSize - QueueSizes[Iterator];
-                    for (
-                        int BufferFillIterator = 0;
-                        BufferFillIterator < FillDiff;
-                        BufferFillIterator++
-                    )
-                    {
-                        Packet ExamplePacket = new Packet();
-                        ExamplePacket.id = PacketID++;
-                        Workers[Iterator].Queue.Add(ExamplePacket);
-                    }
-                }
-
-                if ((DateTime.Now - StartTime).TotalSeconds >= 60)
-                {
-                    Console.WriteLine("Processed: {0} sends in 60 seconds",PacketID);
-                    break;
-                }
-
-                Thread.Sleep(1);
+                Workers[Iterator].Thread.Start(--WorkerID);
             }
-
+            
             // In the main thread we will do some shit?
             Console.ReadKey();
         }
@@ -87,25 +90,80 @@ namespace Crassus
             Console.WriteLine("Thread started");
 
             while (true) {
-                if (Workers[ID].Queue.TryTake(out Packet DPkt))
+                Protocol[] NewPacket = Workers[ID].Queue.Take();
+                // Atomic so cannot be blocked
+                QueueSizes[ID]--;
+                // Just dump the UUID for now
+                Console.WriteLine(
+                    "Processed packet from: {0}",
+                    ((Protocol0)NewPacket[0]).UUID
+                );
+            }
+        }
+
+        public class ChannelAction : WebSocketBehavior
+        {
+            private ConcurrentBag<Protocol[]> SendQueue;
+
+            public ChannelAction() : this(null)
+            {
+            }
+
+            public ChannelAction(string _)
+            {
+            }
+
+            protected override void OnClose(CloseEventArgs Packet)
+            {
+                Console.WriteLine("OnClose");
+
+            }
+
+            protected override void OnOpen()
+            {
+                // Create an entry in the static/Plugins defining what we are
+                // As for channels, each plugin can have .... 
+                Console.WriteLine("OnOpen {0}",ID);
+
+                // Add the websocket to the list
+                ID2WebSocket.Add(ID, Context.WebSocket);
+            }
+
+            protected override void OnMessage(MessageEventArgs Packet)
+            {
+                // Parse the inbound packet
+                JArray DataBlockMaster = JArray.Parse(Packet.Data);
+
+                // Convert into tokens
+                IList<JToken> DataBlockChildren = DataBlockMaster.Children().ToList();
+
+                // Extract the version token
+                Protocol0 Header = DataBlockChildren[0].ToObject<Protocol0>();
+
+                // Extract the data token
+                Protocol Body = new Protocol();
+
+                // WARNING IT MIGHT BE FASTER TO JUST START FROM A GUESS POINT!
+                int LowQueue = int.MaxValue;
+
+                for (int WorkerID = 0;WorkerID < WorkerCount;WorkerID++)
                 {
-                    // Console.WriteLine("Read packet id: {0}", DPkt.id);
+                    if (Workers[WorkerID].Queue.Count < LowQueue)
+                    {
+                        LowQueue = WorkerID;
+                    }
+                }
+
+                if (Header.Version == 1)
+                {
+                    Body = DataBlockChildren[1].ToObject<Protocol1>();
+                    Workers[LowQueue].Queue.Add(new Protocol[] { Header, Body });
+                }
+                else
+                {
+                    Console.WriteLine("Dropped packet due to unknown version");
                 }
             }
         }
-    }
-    internal class Plugin
-    {
-
-    }
-    internal class Packet
-    {
-        internal uint id;
-    }
-    internal class Worker
-    {
-        public Thread Thread { get; internal set; }
-        public BlockingCollection<Packet> Queue { get; internal set; }
-        public int ID { get; internal set; }
     }
 }
