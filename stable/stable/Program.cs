@@ -96,7 +96,7 @@ namespace Crassus
                 // Just dump the UUID for now
                 Console.WriteLine(
                     "Processed packet from: {0}",
-                    ((Protocol0)NewPacket[0]).UUID
+                    ((Protocol0)NewPacket[0]).uuid
                 );
             }
         }
@@ -104,6 +104,8 @@ namespace Crassus
         public class ChannelAction : WebSocketBehavior
         {
             private ConcurrentBag<Protocol[]> SendQueue;
+            private bool NegotiatedVersion = false;
+            private uint ProtocolVersion = 0;
 
             public ChannelAction() : this(null)
             {
@@ -137,6 +139,14 @@ namespace Crassus
                 // Convert into tokens
                 IList<JToken> DataBlockChildren = DataBlockMaster.Children().ToList();
 
+                if (!NegotiatedVersion)
+                {
+                    uint[] SupportedVersions = DataBlockChildren[0].ToObject<uint[]>();
+                    // Do some logic to figure out what we want to use ... accept it
+                    ProtocolVersion = SupportedVersions[(SupportedVersions.Length - 1)];
+                    NegotiatedVersion = true;
+                }
+
                 // Extract the version token
                 Protocol0 Header = DataBlockChildren[0].ToObject<Protocol0>();
 
@@ -154,7 +164,7 @@ namespace Crassus
                     }
                 }
 
-                if (Header.Version == 1)
+                if (Header.version == 1)
                 {
                     Body = DataBlockChildren[1].ToObject<Protocol1>();
                     Workers[LowQueue].Queue.Add(new Protocol[] { Header, Body });

@@ -8,27 +8,39 @@ namespace CrassusProtocols
 
     }
 
+    public class Version : Protocol
+    {
+        public readonly List<uint> Supported = new List<uint>() {
+            0,
+            1
+        };
+    }
+
     public class Protocol0 : Protocol
     {
-        public uint Version { get; set; }
-        public Guid UUID { get; set; }
+        public uint version { get; set; }
+        public Guid uuid { get; set; }
         public Protocol0 (uint NewVersion,Guid NewUUID)
         {
-            Version = NewVersion;
-            UUID = NewUUID;
+            version = NewVersion;
+            uuid = NewUUID;
         }
     }
 
     public class Protocol1 : Protocol
     {
-        public string[] Crassus { get; set; }
-        public Dictionary<string,string> Routing { get; set; }
-        public Dictionary<string,string> Option { get; set; }
+        public uint[] crassus { get; set; }
+    }
+    public class Protocol100 : Protocol
+    {
+        public string[] crassus { get; set; }
+        public Dictionary<string,object> routing { get; set; }
+        public Dictionary<string,string> option { get; set; }
 
-        public Protocol1()
+        public Protocol100()
         {
-            Option = new Dictionary<string, string>();
-            Routing = new Dictionary<string, string>();
+            option = new Dictionary<string, string>();
+            routing = new Dictionary<string, object>();
         }
     }
 }

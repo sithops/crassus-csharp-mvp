@@ -36,14 +36,11 @@ namespace WSClient
                 // Initilize the store for the version number
                 JSONPacketData[0] = new Protocol0(1, Guid.NewGuid());
 
-                if (((Protocol0)JSONPacketData[0]).Version == 1)
+                if (((Protocol0)JSONPacketData[0]).version == 1)
                 {
                     JSONPacketData[1] = new Protocol1();
                     // Bind the data to the appropriate parts of the packet
-                    ((Protocol1)JSONPacketData[1]).Crassus = new string[] {
-                        @"ECHO",
-                        @"TestData"
-                    };
+                    ((Protocol1)JSONPacketData[1]).crassus = new uint[] { 0,1,100 };
 
                     websocket.Send(JsonConvert.SerializeObject(JSONPacketData));
                 }
