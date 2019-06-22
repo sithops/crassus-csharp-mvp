@@ -9,7 +9,7 @@ namespace WSClient
 {
     class Program
     {
-        static readonly PacketVersion PacketStructures = new PacketVersion();
+        static readonly PacketVersion PacketVersions = new PacketVersion();
 
         static void Main(string[] args)
         {   
@@ -31,8 +31,7 @@ namespace WSClient
             websocket.Connect();
 
             {
-                uint[] PluginVersions = PacketStructures.AsArray();
-                websocket.Send(JsonConvert.SerializeObject(PluginVersions));
+                websocket.Send(JsonConvert.SerializeObject(PacketVersions.ToArray()));
             }
             
             Console.ReadKey();

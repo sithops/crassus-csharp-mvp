@@ -18,18 +18,19 @@ namespace Crassus
     public class Program
     {
         // Number of workers to use
-        const int WorkerCount = 4;
-        const int BufferSize = 4096;
+        const int       WorkerCount             = 4;
+        const int       BufferSize              = 4096;
+        const string    internalGuidAsString    = @"00000000-0000-0000-0000-000000000000";
 
         // A static random generator object
         static Random random = new Random();
 
         // Optimizations for queue size lookups
-        static uint[] QueueSizes;
+        static int[] QueueSizes;
 
         // Where we place our global objects (having no faster or better way to do it)
         static List<Worker> Workers = new List<Worker>();
-        static Dictionary<string, WebSocket> ID2WebSocket = new Dictionary<string, WebSocket>();
+        static Dictionary<string, WebSocket> id2WebSocket = new Dictionary<string, WebSocket>();
 
         // An object to check what versions of things we have availible
         static readonly PacketVersion PacketStructures = new PacketVersion();
@@ -39,7 +40,7 @@ namespace Crassus
         {
             int WorkerID = 0;
 
-            QueueSizes = new uint[WorkerCount];
+            QueueSizes = new int[WorkerCount];
 
             DateTime StartTime = DateTime.Now;
 
@@ -80,28 +81,62 @@ namespace Crassus
 
         static void Consumer(Object MyID)
         {
+            // Our ID
             int ID = (int)MyID;
 
-            Worker Workload = new Worker();
-            Console.WriteLine("Thread started");
+            // Pre create s apce for the header and body and internal guid
+            Protocol Header     = new Protocol();
+            Protocol Body       = new Protocol();
+            Guid internalGuid   = Guid.Parse(internalGuidAsString);
 
+            // Register us some queues and whatnot
+            Worker Workload = new Worker();
+
+            // A little debug
+            Console.WriteLine("Worker: {0} started",ID);
+
+            // The main work load
             while (true) {
+                // Wait for some work to do
                 Protocol[] NewPacket = Workers[ID].Queue.Take();
+
                 // Atomic so cannot be blocked
                 QueueSizes[ID]--;
-                // Just dump the UUID for now
-                Console.WriteLine(
-                    "Processed packet from: {0}",
-                    ((Protocol0)NewPacket[0]).uuid
-                );
+
+                // Maybe this is a new client, check for our internal UUID
+                if (((Protocol0)NewPacket[0]).uuid.Equals(internalGuid))
+                {
+                    // Ah it is 
+                    Console.WriteLine("Internal packet detected! (Using protocolx)");
+                    uint[] Vers = ((ProtocolX)NewPacket[1]).crassus;
+                    foreach (uint X in Vers)
+                    {
+                        Console.WriteLine("Version detected: {0}", X);
+                    }
+                }
+                else
+                {
+                    // Just dump the UUID for now
+                    Console.WriteLine(
+                        "Processed packet from: {0}",
+                        ((Protocol0)NewPacket[0]).uuid
+                    );
+                }
             }
         }
 
         public class ChannelAction : WebSocketBehavior
         {
             private ConcurrentBag<Protocol[]> SendQueue;
-            private bool NegotiatedVersion = false;
-            private uint ProtocolVersion = 0;
+
+            // Initial connection detect
+            private bool negotiatedVersion = false;
+            private uint[] protocolVersionSupport;
+
+            // Just to speed up processing slightly
+            private Guid internalGuid;
+            private Protocol Header = new Protocol();
+            private Protocol Body = new Protocol();
 
             public ChannelAction() : this(null)
             {
@@ -123,49 +158,55 @@ namespace Crassus
                 // As for channels, each plugin can have .... 
                 Console.WriteLine("OnOpen {0}",ID);
 
+                // Generate cache items
+                internalGuid = Guid.Parse(internalGuidAsString);
+
                 // Add the websocket to the list
-                ID2WebSocket.Add(ID, Context.WebSocket);
+                id2WebSocket.Add(ID, Context.WebSocket);
             }
 
             protected override void OnMessage(MessageEventArgs Packet)
             {
                 // Parse the inbound packet
-                JArray DataBlockMaster = JArray.Parse(Packet.Data);
+                JArray dataBlockMaster = JArray.Parse(Packet.Data);
                 
                 // Convert into tokens
-                IList<JToken> DataBlockChildren = DataBlockMaster.Children().ToList();
+                IList<JToken> dataBlockChildren = dataBlockMaster.Children().ToList();
 
-                if (!NegotiatedVersion)
+                // Le Logic time
+                if (!negotiatedVersion)
                 {
-                    List<uint> PluginVersions = new List<uint>();
+                    List<uint> pluginVersions = new List<uint>();
 
-                    foreach (JToken ClientPluginVersion in DataBlockChildren)
+                    foreach (JToken clientPluginVersion in dataBlockChildren)
                     {
-                        PluginVersions.Add(ClientPluginVersion.ToObject<uint>());
+                        pluginVersions.Add(clientPluginVersion.ToObject<uint>());
                     }
 
                     // Do some logic to figure out what we want to use ... accept it
-                    ProtocolVersion = PacketStructures.Max();
-                    NegotiatedVersion = true;
+                    protocolVersionSupport = PacketStructures.Negotiate(pluginVersions,true);
+                    negotiatedVersion = true;
 
-                    // 
-                    return;
+                    // Generate a header
+                    Header = new Protocol0(protocolVersionSupport[0],internalGuid);
+                    Body = new ProtocolX(protocolVersionSupport);
                 }
-
-                // uint[] PluginVersions = JsonConvert.DeserializeObject<uint[]>(Packet.Data);
-
-
-                
-                // Extract the version token
-                Protocol0 Header = DataBlockChildren[0].ToObject<Protocol0>();
-
-                // Extract the data token
-                Protocol Body = new Protocol();
+                else
+                {
+                    // Extract the version token
+                    Header = dataBlockChildren[0].ToObject<Protocol0>();
+                    if (((Protocol0)Header).uuid.Equals(internalGuid))
+                    {
+                        // Someone tried to send a fake GUID or was to lazy to generate one, create one for them.
+                        ((Protocol0)Header).uuid = Guid.NewGuid();
+                    }
+                    Body = dataBlockChildren[1].ToObject<Protocol1>();
+                }
 
                 // WARNING IT MIGHT BE FASTER TO JUST START FROM A GUESS POINT!
                 int LowQueue = int.MaxValue;
 
-                for (int WorkerID = 0;WorkerID < WorkerCount;WorkerID++)
+                for (int WorkerID = 0; WorkerID < WorkerCount; WorkerID++)
                 {
                     if (Workers[WorkerID].Queue.Count < LowQueue)
                     {
@@ -173,16 +214,9 @@ namespace Crassus
                     }
                 }
 
-                if (Header.version == 1)
-                {
-                    Body = DataBlockChildren[1].ToObject<Protocol1>();
-                    Workers[LowQueue].Queue.Add(new Protocol[] { Header, Body });
-                }
-                else
-                {
-                    Console.WriteLine("Dropped packet due to unknown version");
-                }
+                Workers[LowQueue].Queue.Add(new Protocol[] { Header, Body });
             }
+
         }
     }
 }
