@@ -9,8 +9,10 @@ namespace WSClient
 {
     class Program
     {
+        static readonly PacketVersion PacketStructures = new PacketVersion();
+
         static void Main(string[] args)
-        {         
+        {   
             WebSocket websocket = new WebSocket("ws://127.0.0.1:8080");
 
             websocket.OnMessage += (sender, data) =>
@@ -28,6 +30,14 @@ namespace WSClient
 
             websocket.Connect();
 
+            {
+                uint[] PluginVersions = PacketStructures.AsArray();
+                websocket.Send(JsonConvert.SerializeObject(PluginVersions));
+            }
+            
+            Console.ReadKey();
+
+            /*
             for (int i = 0; i < 10; i++)
             {
                 // Send packets to ourself for testing
@@ -45,6 +55,7 @@ namespace WSClient
                     websocket.Send(JsonConvert.SerializeObject(JSONPacketData));
                 }
             }
+            */
         }
     }
 }

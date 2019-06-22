@@ -1,0 +1,7 @@
+﻿        //static Dictionary<string,List<string>> Subscriptions = new Dictionary<string,List<string>>();
+
+        //static ConcurrentDictionary<string, int> Channels = new ConcurrentDictionary<string, int>();
+        //static ConcurrentDictionary<Plugin,int> Plugins = new ConcurrentDictionary<Plugin,int>();
+
+        // It is all here, all you need is a way to reference other sockets in a broadcast
+        // And also keep some form of fast lookup between connections

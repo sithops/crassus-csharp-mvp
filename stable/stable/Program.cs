@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 
 using CrassusProtocols;
 using CrassusClasses;
-
+using Newtonsoft.Json;
 
 namespace Crassus
 {
@@ -30,13 +30,9 @@ namespace Crassus
         // Where we place our global objects (having no faster or better way to do it)
         static List<Worker> Workers = new List<Worker>();
         static Dictionary<string, WebSocket> ID2WebSocket = new Dictionary<string, WebSocket>();
-        //static Dictionary<string,List<string>> Subscriptions = new Dictionary<string,List<string>>();
 
-        //static ConcurrentDictionary<string, int> Channels = new ConcurrentDictionary<string, int>();
-        //static ConcurrentDictionary<Plugin,int> Plugins = new ConcurrentDictionary<Plugin,int>();
-
-        // It is all here, all you need is a way to reference other sockets in a broadcast
-        // And also keep some form of fast lookup between connections
+        // An object to check what versions of things we have availible
+        static readonly PacketVersion PacketStructures = new PacketVersion();
 
         [Obsolete]
         public static void Main(string[] args)
@@ -135,18 +131,31 @@ namespace Crassus
             {
                 // Parse the inbound packet
                 JArray DataBlockMaster = JArray.Parse(Packet.Data);
-
+                
                 // Convert into tokens
                 IList<JToken> DataBlockChildren = DataBlockMaster.Children().ToList();
 
                 if (!NegotiatedVersion)
                 {
-                    uint[] SupportedVersions = DataBlockChildren[0].ToObject<uint[]>();
+                    List<uint> PluginVersions = new List<uint>();
+
+                    foreach (JToken ClientPluginVersion in DataBlockChildren)
+                    {
+                        PluginVersions.Add(ClientPluginVersion.ToObject<uint>());
+                    }
+
                     // Do some logic to figure out what we want to use ... accept it
-                    ProtocolVersion = SupportedVersions[(SupportedVersions.Length - 1)];
+                    ProtocolVersion = PacketStructures.Max();
                     NegotiatedVersion = true;
+
+                    // 
+                    return;
                 }
 
+                // uint[] PluginVersions = JsonConvert.DeserializeObject<uint[]>(Packet.Data);
+
+
+                
                 // Extract the version token
                 Protocol0 Header = DataBlockChildren[0].ToObject<Protocol0>();
 
