@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 namespace CrassusProtocols
@@ -97,10 +98,18 @@ namespace CrassusProtocols
     /// and optionally a Guid, if no Guid is specified one will be 
     /// automatically created
     /// </summary>
+    /// 
+    //A class should either have a default constructor, one constructor with arguments or a constructor marked with the JsonConstructor attribute.Path '[0].version', line 1, position 12.'
     public class ProtocolHeader0 : Protocol
     {
         public uint version { get; set; }
         public Guid uuid { get; set; }
+        [JsonConstructor]
+        public ProtocolHeader0(object newVersion, string newUUID)
+        {
+            version = (uint)newVersion;
+            uuid = Guid.Parse(newUUID);
+        }
         public ProtocolHeader0(uint newVersion,Guid newUUID)
         {
             version = newVersion;

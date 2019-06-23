@@ -160,6 +160,17 @@ namespace Crassus
                     string websocketID
                 ) = Workers[workerID].Queue.Take();
 
+                Protocol[] Packet;
+                // Decrypt the packet
+                try
+                {
+                    Packet = JsonConvert.DeserializeObject<Protocol[]>(jsonPacket);
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine("Problem decoding JSON: '{0}",exception.Message);
+                }
+
                 // Decrement the queue for this websocket
                 QueueSizes[workerID]--;
 
@@ -213,14 +224,19 @@ namespace Crassus
                 }
                 else
                 {
+                    Console.WriteLine("Got here! 1");
                     // Extract the version token
-                    rxheader = dataBlockChildren[0].ToObject<ProtocolHeader0>();
+                    
+                    // FUCKING HERE TODO FIXME BROKEN WTF TODO ITS HERE
+                    // README FRIND ERROR YOU DECRYPTED IT AS AN ARRAY!
+                    rxheader = 
                     if (((ProtocolHeader0)rxheader).uuid.Equals(internalGuid))
                     {
                         // Someone tried to send a fake GUID or was to lazy to generate one, 
                         // create one for them that makes sense.
                         ((ProtocolHeader0)rxheader).uuid = Guid.NewGuid();
                     }
+                    Console.WriteLine("Got here! 2");
                     switch (((ProtocolHeader0)rxheader).version)
                     {
                         case 0:
@@ -235,6 +251,9 @@ namespace Crassus
                             globalWebSockets.Remove(websocketID);
                             continue;
                     }
+                    // Because we know its a test packet
+                    Console.WriteLine("Got here! 3");
+                    Console.WriteLine("We got: {0}", System.Text.Encoding.UTF8.GetString(((ProtocolBody0)rxbody).crassus));
                 }
             }
 
