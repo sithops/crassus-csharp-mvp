@@ -1,4 +1,21 @@
-﻿        //static Dictionary<string,List<string>> Subscriptions = new Dictionary<string,List<string>>();
+﻿              // Maybe this is a new client, check for our internal UUID
+                if (((Protocol0)NewPacket[0]).uuid.Equals(internalGuid))
+                {
+                    // Ah it is 
+                    Console.WriteLine("Internal packet detected! (Using protocolx)");
+                    uint[] Versions = ((ProtocolX)NewPacket[1]).versions;
+
+                }
+                else
+                {
+                    // Just dump the UUID for now
+                    Console.WriteLine(
+                        "Processed packet from: {0}",
+                        ((Protocol0)NewPacket[0]).uuid
+                    );
+                }
+
+        //static Dictionary<string,List<string>> Subscriptions = new Dictionary<string,List<string>>();
 
         //static ConcurrentDictionary<string, int> Channels = new ConcurrentDictionary<string, int>();
         //static ConcurrentDictionary<Plugin,int> Plugins = new ConcurrentDictionary<Plugin,int>();

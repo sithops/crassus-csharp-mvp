@@ -4,12 +4,17 @@ using Newtonsoft.Json;
 
 using CrassusProtocols;
 using CrassusClasses;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace WSClient
 {
     class Program
     {
         static readonly PacketVersion PacketVersions = new PacketVersion();
+        static bool FirstResp = true;
+        static uint[] protocolVersion;
 
         static void Main(string[] args)
         {   
@@ -17,7 +22,32 @@ namespace WSClient
 
             websocket.OnMessage += (sender, data) =>
             {
-                
+                // Parse the inbound packet
+                JArray dataBlockMaster = JArray.Parse(data.Data);
+
+                // Convert into tokens
+                IList<JToken> dataBlockChildren = dataBlockMaster.Children().ToList();
+
+                if (FirstResp)
+                {
+                    FirstResp = false;
+                    List<uint> protocolVersion = new List<uint>();
+                    foreach (JToken clientPluginVersion in dataBlockChildren)
+                    {
+                        protocolVersion.Add(clientPluginVersion.ToObject<uint>());
+                        Console.WriteLine("Server supports: {0}", clientPluginVersion);
+                    }
+
+                    if (protocolVersion.Count == 0)
+                    {
+                        Console.WriteLine("We do not support any mutual version the server does!");
+                        websocket.Close();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Using: {0} by default", protocolVersion[0]);
+                    }
+                }
             };
 
             websocket.OnOpen += (sender, data) =>
