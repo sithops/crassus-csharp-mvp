@@ -90,7 +90,7 @@ namespace Crassus
             Guid internalGuid   = Guid.Parse(internalGuidAsString);
 
             // Register us some queues and whatnot
-            Worker Workload = new Worker();
+            Worker Workload     = new Worker();
 
             // A little debug
             Console.WriteLine("Worker: {0} started",ID);
@@ -108,10 +108,10 @@ namespace Crassus
                 {
                     // Ah it is 
                     Console.WriteLine("Internal packet detected! (Using protocolx)");
-                    uint[] Vers = ((ProtocolX)NewPacket[1]).crassus;
-                    foreach (uint X in Vers)
+                    uint[] Versions = ((ProtocolX)NewPacket[1]).versions;
+                    foreach (uint PossibleVersion in Versions)
                     {
-                        Console.WriteLine("Version detected: {0}", X);
+                        Console.WriteLine("Version detected: {0}", PossibleVersion);
                     }
                 }
                 else
@@ -135,7 +135,7 @@ namespace Crassus
 
             // Just to speed up processing slightly
             private Guid internalGuid;
-            private Protocol Header = new Protocol();
+            private Protocol header = new Protocol();
             private Protocol Body = new Protocol();
 
             public ChannelAction() : this(null)
@@ -184,37 +184,37 @@ namespace Crassus
                     }
 
                     // Do some logic to figure out what we want to use ... accept it
-                    protocolVersionSupport = PacketStructures.Negotiate(pluginVersions,true);
-                    negotiatedVersion = true;
+                    protocolVersionSupport  = PacketStructures.Negotiate(pluginVersions,true);
+                    negotiatedVersion       = true;
 
                     // Generate a header
-                    Header = new Protocol0(protocolVersionSupport[0],internalGuid);
-                    Body = new ProtocolX(protocolVersionSupport);
+                    header  = new Protocol0(protocolVersionSupport[0],internalGuid);
+                    Body    = new ProtocolX(protocolVersionSupport);
                 }
                 else
                 {
                     // Extract the version token
-                    Header = dataBlockChildren[0].ToObject<Protocol0>();
-                    if (((Protocol0)Header).uuid.Equals(internalGuid))
+                    header = dataBlockChildren[0].ToObject<Protocol0>();
+                    if (((Protocol0)header).uuid.Equals(internalGuid))
                     {
                         // Someone tried to send a fake GUID or was to lazy to generate one, create one for them.
-                        ((Protocol0)Header).uuid = Guid.NewGuid();
+                        ((Protocol0)header).uuid = Guid.NewGuid();
                     }
                     Body = dataBlockChildren[1].ToObject<Protocol1>();
                 }
 
                 // WARNING IT MIGHT BE FASTER TO JUST START FROM A GUESS POINT!
-                int LowQueue = int.MaxValue;
+                int lowQueue = int.MaxValue;
 
-                for (int WorkerID = 0; WorkerID < WorkerCount; WorkerID++)
+                for (int workerID = 0; workerID < WorkerCount; workerID++)
                 {
-                    if (Workers[WorkerID].Queue.Count < LowQueue)
+                    if (Workers[workerID].Queue.Count < lowQueue)
                     {
-                        LowQueue = WorkerID;
+                        lowQueue = workerID;
                     }
                 }
 
-                Workers[LowQueue].Queue.Add(new Protocol[] { Header, Body });
+                Workers[lowQueue].Queue.Add(new Protocol[] { header, Body });
             }
 
         }

@@ -135,9 +135,9 @@ namespace CrassusProtocols
     {
         public ProtocolX(uint[] protocolVersionSupport)
         {
-            crassus = protocolVersionSupport;
+            versions = protocolVersionSupport;
         }
 
-        public uint[] crassus { get; set; }
+        public uint[] versions { get; set; }
     }
 }
