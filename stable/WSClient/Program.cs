@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 
 namespace WSClient
 {
@@ -48,11 +49,32 @@ namespace WSClient
                     {
                         Console.WriteLine("Using: {0} by default", protocolVersion[0]);
                         // Send the first broadcast message!
-                        Protocol header             = new Protocol0(protocolVersion[0]);
-                        Protocol body               = new Protocol1();
-                        ((Protocol1)body).crassus   = Encoding.UTF8.GetBytes(@"Hello World");
+                        // Read in an image file
+                        //string text = File.ReadAllText(@"c:\img.png");
 
-                        websocket.Send(JsonConvert.SerializeObject(body));
+                        Protocol header = new ProtocolHeader0(protocolVersion[0]);
+                        Protocol body = new ProtocolBody0();
+
+                        ((ProtocolBody0)body).crassus = Encoding.UTF8.GetBytes(@"Hello World");
+                        ((ProtocolBody0)body).option = new Dictionary<string, string>
+                        {
+                            { "report","report_clients" }
+                        };
+                        ((ProtocolBody0)body).routing = new Dictionary<string, object>
+                        {
+                            { "destination","blah"},
+                            { "source","blah"}
+                        };
+
+                        Console.WriteLine(JsonConvert.SerializeObject(
+                                new Protocol[] { header, body }
+                            ));
+
+                        websocket.Send(
+                            JsonConvert.SerializeObject(
+                                new Protocol[] { header, body }
+                            )
+                        );
                     }
                 }
                 // Elsewhere this is a normal packet!

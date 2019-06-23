@@ -160,16 +160,27 @@ namespace Crassus
                     string websocketID
                 ) = Workers[workerID].Queue.Take();
 
+                // Decrement the queue for this websocket
                 QueueSizes[workerID]--;
-
-                // Parse the inbound packet
-                JArray dataBlockMaster = JArray.Parse(jsonPacket);
-
-                // Convert into tokens
-                IList<JToken> dataBlockChildren = dataBlockMaster.Children().ToList();
 
                 // Get a reference to our WebSocket
                 WebSocketContainer webSocket = globalWebSockets[websocketID];
+
+                JArray dataBlockMaster;
+                IList<JToken> dataBlockChildren = new JArray();
+                try
+                {
+                    // Parse the inbound packet
+                    dataBlockMaster = JArray.Parse(jsonPacket);
+                    // Convert into tokens
+                    dataBlockChildren = dataBlockMaster.Children().ToList();
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine("Exception raised decoding json: {0}", exception.Message);
+                    webSocket.socket.Close();
+                    globalWebSockets.Remove(websocketID);
+                }
 
                 // Le Logic time
                 if (!webSocket.negotiatedVersion)
@@ -203,20 +214,17 @@ namespace Crassus
                 else
                 {
                     // Extract the version token
-                    rxheader = dataBlockChildren[0].ToObject<Protocol0>();
-                    if (((Protocol0)rxheader).uuid.Equals(internalGuid))
+                    rxheader = dataBlockChildren[0].ToObject<ProtocolHeader0>();
+                    if (((ProtocolHeader0)rxheader).uuid.Equals(internalGuid))
                     {
                         // Someone tried to send a fake GUID or was to lazy to generate one, 
                         // create one for them that makes sense.
-                        ((Protocol0)rxheader).uuid = Guid.NewGuid();
+                        ((ProtocolHeader0)rxheader).uuid = Guid.NewGuid();
                     }
-                    switch (((Protocol0)rxheader).version)
+                    switch (((ProtocolHeader0)rxheader).version)
                     {
                         case 0:
-                            rxbody = dataBlockChildren[1].ToObject<Protocol0>();
-                            break;
-                        case 1:
-                            rxbody = dataBlockChildren[1].ToObject<Protocol1>();
+                            rxbody = dataBlockChildren[1].ToObject<ProtocolBody0>();
                             break;
                         default:
                             Console.WriteLine(

@@ -11,8 +11,7 @@ namespace CrassusProtocols
     public class PacketVersion : Protocol
     {
         private readonly List<uint> supportedVersions = new List<uint>() {
-            0,
-            1
+            0
         };
         private readonly uint supportedMax = 1;
         /// <summary>
@@ -98,16 +97,16 @@ namespace CrassusProtocols
     /// and optionally a Guid, if no Guid is specified one will be 
     /// automatically created
     /// </summary>
-    public class Protocol0 : Protocol
+    public class ProtocolHeader0 : Protocol
     {
         public uint version { get; set; }
         public Guid uuid { get; set; }
-        public Protocol0 (uint newVersion,Guid newUUID)
+        public ProtocolHeader0(uint newVersion,Guid newUUID)
         {
             version = newVersion;
             uuid = newUUID;
         }
-        public Protocol0(uint NewVersion)
+        public ProtocolHeader0(uint NewVersion)
         {
             version = NewVersion;
             uuid = Guid.NewGuid();
@@ -116,13 +115,13 @@ namespace CrassusProtocols
     /// <summary>
     /// Cast and access version 1 packets
     /// </summary>
-    public class Protocol1 : Protocol
+    public class ProtocolBody0 : Protocol
     {
         public byte[] crassus { get; set; }
         public Dictionary<string,object> routing { get; set; }
+        public string tag { get; set; }
         public Dictionary<string,string> option { get; set; }
-
-        public Protocol1()
+        public ProtocolBody0()
         {
             option = new Dictionary<string, string>();
             routing = new Dictionary<string, object>();
