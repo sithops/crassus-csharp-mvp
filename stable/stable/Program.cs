@@ -1,26 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using CrassusClasses;
+using CrassusProtocols;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Concurrent;
-using System.Threading;
+using System.Collections.Generic;
 using System.Linq;
-
+using System.Threading;
 using WebSocketSharp;
 using WebSocketSharp.Server;
-
-using Newtonsoft.Json.Linq;
-
-using CrassusProtocols;
-using CrassusClasses;
-using Newtonsoft.Json;
 
 namespace Crassus
 {
     public class Program
     {
         // Number of workers to use
-        const int       WorkerCount             = 4;
-        const int       BufferSize              = 4096;
-        const string    internalGuidAsString    = @"00000000-0000-0000-0000-000000000000";
+        const int WorkerCount = 4;
+        const int BufferSize = 4096;
+        const string internalGuidAsString = @"00000000-0000-0000-0000-000000000000";
 
         // A static random generator object
         static Random random = new Random();
@@ -30,7 +27,8 @@ namespace Crassus
 
         // Where we place our global objects (having no faster or better way to do it)
         static List<Worker> Workers = new List<Worker>();
-        static Dictionary<string, WebSocketContainer> id2WebSocket = new Dictionary<string, WebSocketContainer>();
+        static Dictionary<string, WebSocketContainer> globalWebSockets =
+            new Dictionary<string, WebSocketContainer>();
 
         // An object to check what versions of things we have availible
         static readonly PacketVersion PacketStructures = new PacketVersion();
@@ -55,7 +53,7 @@ namespace Crassus
 
                 Worker Worker = new Worker();
                 Worker.Thread = new Thread(new ParameterizedThreadStart(Consumer));
-                Worker.Queue = new BlockingCollection<(string,string)>();
+                Worker.Queue = new BlockingCollection<(string, string)>();
                 Worker.ID = WorkerID++;
                 Workers.Add(Worker);
             }
@@ -74,7 +72,7 @@ namespace Crassus
             {
                 Workers[Iterator].Thread.Start(--WorkerID);
             }
-            
+
             // In the main thread we will do some shit?
             Console.ReadKey();
         }
@@ -100,11 +98,11 @@ namespace Crassus
             {
                 // Create an entry in the static/Plugins defining what we are
                 // As for channels, each plugin can have .... 
-                Console.WriteLine("OnOpen {0}",ID);
+                Console.WriteLine("OnOpen {0}", ID);
 
                 // Add the websocket to the list
-                id2WebSocket.Add(
-                    ID, 
+                globalWebSockets.Add(
+                    ID,
                     new WebSocketContainer(
                         Context.WebSocket,
                         Guid.Parse(internalGuidAsString)
@@ -114,7 +112,7 @@ namespace Crassus
 
             protected override void OnMessage(MessageEventArgs Packet)
             {
-                
+
                 // WARNING IT MIGHT BE FASTER TO JUST START FROM A GUESS POINT!
                 int lowQueue = int.MaxValue;
 
@@ -171,10 +169,10 @@ namespace Crassus
                 IList<JToken> dataBlockChildren = dataBlockMaster.Children().ToList();
 
                 // Get a reference to our WebSocket
-                WebSocketContainer websocket = id2WebSocket[websocketID];
+                WebSocketContainer webSocket = globalWebSockets[websocketID];
 
                 // Le Logic time
-                if (!websocket.negotiatedVersion)
+                if (!webSocket.negotiatedVersion)
                 {
                     List<uint> pluginVersions = new List<uint>();
 
@@ -184,16 +182,23 @@ namespace Crassus
                     }
 
                     // Do some logic to figure out what we want to use ... accept it
-                    websocket.protocolVersionSupport    = PacketStructures.Negotiate(pluginVersions, true);
-                    websocket.negotiatedVersion         = true;
+                    webSocket.protocolVersionSupport = PacketStructures.Negotiate(pluginVersions, true);
+                    webSocket.negotiatedVersion = true;
 
                     // Send a response with our supported versions, highest first 
                     // Send out via the websocket
-                    websocket.socket.Send(
+                    webSocket.socket.Send(
                         JsonConvert.SerializeObject(
-                            websocket.protocolVersionSupport
+                            webSocket.protocolVersionSupport
                         )
                     );
+
+                    // If this was a blank array disconnect now
+                    if (webSocket.protocolVersionSupport.Length == 0)
+                    {
+                        webSocket.socket.Close();
+                        globalWebSockets.Remove(websocketID);
+                    }
                 }
                 else
                 {
@@ -201,11 +206,28 @@ namespace Crassus
                     rxheader = dataBlockChildren[0].ToObject<Protocol0>();
                     if (((Protocol0)rxheader).uuid.Equals(internalGuid))
                     {
-                        // Someone tried to send a fake GUID or was to lazy to generate one, create one for them.
+                        // Someone tried to send a fake GUID or was to lazy to generate one, 
+                        // create one for them that makes sense.
                         ((Protocol0)rxheader).uuid = Guid.NewGuid();
                     }
-                    rxbody = dataBlockChildren[1].ToObject<Protocol1>();
-                }             
+                    switch (((Protocol0)rxheader).version)
+                    {
+                        case 0:
+                            rxbody = dataBlockChildren[1].ToObject<Protocol0>();
+                            break;
+                        case 1:
+                            rxbody = dataBlockChildren[1].ToObject<Protocol1>();
+                            break;
+                        default:
+                            Console.WriteLine(
+                                "No idea what to do with version: '{0}', " +
+                                "this client should not have sent this"
+                            );
+                            webSocket.socket.Close();
+                            globalWebSockets.Remove(websocketID);
+                            continue;
+                    }
+                }
             }
 
         }

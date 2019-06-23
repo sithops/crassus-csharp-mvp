@@ -118,7 +118,7 @@ namespace CrassusProtocols
     /// </summary>
     public class Protocol1 : Protocol
     {
-        public string[] crassus { get; set; }
+        public byte[] crassus { get; set; }
         public Dictionary<string,object> routing { get; set; }
         public Dictionary<string,string> option { get; set; }
 

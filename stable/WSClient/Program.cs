@@ -7,6 +7,7 @@ using CrassusClasses;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace WSClient
 {
@@ -14,7 +15,7 @@ namespace WSClient
     {
         static readonly PacketVersion PacketVersions = new PacketVersion();
         static bool FirstResp = true;
-        static uint[] protocolVersion;
+        static List<uint> protocolVersion = new List<uint>();
 
         static void Main(string[] args)
         {   
@@ -31,7 +32,7 @@ namespace WSClient
                 if (FirstResp)
                 {
                     FirstResp = false;
-                    List<uint> protocolVersion = new List<uint>();
+                    
                     foreach (JToken clientPluginVersion in dataBlockChildren)
                     {
                         protocolVersion.Add(clientPluginVersion.ToObject<uint>());
@@ -46,8 +47,16 @@ namespace WSClient
                     else
                     {
                         Console.WriteLine("Using: {0} by default", protocolVersion[0]);
+                        // Send the first broadcast message!
+                        Protocol header             = new Protocol0(protocolVersion[0]);
+                        Protocol body               = new Protocol1();
+                        ((Protocol1)body).crassus   = Encoding.UTF8.GetBytes(@"Hello World");
+
+                        websocket.Send(JsonConvert.SerializeObject(body));
                     }
                 }
+                // Elsewhere this is a normal packet!
+
             };
 
             websocket.OnOpen += (sender, data) =>
