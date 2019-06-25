@@ -60,15 +60,17 @@ namespace WSClient
                         {
                             { "report","report_clients" }
                         };
-                        ((ProtocolBody0)body).routing = new Dictionary<string, object>
+                        ((ProtocolBody0)body).routing = new Dictionary<string, Guid>
                         {
-                            { "destination","blah"},
-                            { "source","blah"}
+                            { "destination",Guid.NewGuid() },
+                            { "source",Guid.NewGuid()}
                         };
 
-                        Console.WriteLine(JsonConvert.SerializeObject(
+                        Console.WriteLine(
+                            JsonConvert.SerializeObject(
                                 new Protocol[] { header, body }
-                            ));
+                            )
+                        );
 
                         websocket.Send(
                             JsonConvert.SerializeObject(
@@ -96,26 +98,6 @@ namespace WSClient
             }
             
             Console.ReadKey();
-
-            /*
-            for (int i = 0; i < 10; i++)
-            {
-                // Send packets to ourself for testing
-                Protocol[] JSONPacketData = new Protocol[2];
-
-                // Initilize the store for the version number
-                JSONPacketData[0] = new Protocol0(1, Guid.NewGuid());
-
-                if (((Protocol0)JSONPacketData[0]).version == 1)
-                {
-                    JSONPacketData[1] = new Protocol1();
-                    // Bind the data to the appropriate parts of the packet
-                    ((Protocol1)JSONPacketData[1]).crassus = new uint[] { 0,1,100 };
-
-                    websocket.Send(JsonConvert.SerializeObject(JSONPacketData));
-                }
-            }
-            */
         }
     }
 }

@@ -105,10 +105,10 @@ namespace CrassusProtocols
         public uint version { get; set; }
         public Guid uuid { get; set; }
         [JsonConstructor]
-        public ProtocolHeader0(object newVersion, string newUUID)
+        public ProtocolHeader0()
         {
-            version = (uint)newVersion;
-            uuid = Guid.Parse(newUUID);
+            //version = (uint)newVersion;
+            //uuid = Guid.Parse(newUUID);
         }
         public ProtocolHeader0(uint newVersion,Guid newUUID)
         {
@@ -127,13 +127,13 @@ namespace CrassusProtocols
     public class ProtocolBody0 : Protocol
     {
         public byte[] crassus { get; set; }
-        public Dictionary<string,object> routing { get; set; }
+        public Dictionary<string, Guid> routing { get; set; }
         public string tag { get; set; }
         public Dictionary<string,string> option { get; set; }
         public ProtocolBody0()
         {
             option = new Dictionary<string, string>();
-            routing = new Dictionary<string, object>();
+            routing = new Dictionary<string, Guid>();
         }
     }
     /// <summary>

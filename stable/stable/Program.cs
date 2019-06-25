@@ -160,25 +160,15 @@ namespace Crassus
                     string websocketID
                 ) = Workers[workerID].Queue.Take();
 
-                Protocol[] Packet;
-                // Decrypt the packet
-                try
-                {
-                    Packet = JsonConvert.DeserializeObject<Protocol[]>(jsonPacket);
-                }
-                catch (Exception exception)
-                {
-                    Console.WriteLine("Problem decoding JSON: '{0}",exception.Message);
-                }
-
-                // Decrement the queue for this websocket
-                QueueSizes[workerID]--;
-
                 // Get a reference to our WebSocket
                 WebSocketContainer webSocket = globalWebSockets[websocketID];
 
                 JArray dataBlockMaster;
                 IList<JToken> dataBlockChildren = new JArray();
+
+                // Decrement the queue for this websocket
+                QueueSizes[workerID]--;
+
                 try
                 {
                     // Parse the inbound packet
@@ -226,10 +216,10 @@ namespace Crassus
                 {
                     Console.WriteLine("Got here! 1");
                     // Extract the version token
-                    
+
                     // FUCKING HERE TODO FIXME BROKEN WTF TODO ITS HERE
-                    // README FRIND ERROR YOU DECRYPTED IT AS AN ARRAY!
-                    rxheader = 
+                    // README FIND ERROR YOU DECRYPTED IT AS AN ARRAY!
+                    rxheader = dataBlockChildren[0].ToObject<ProtocolHeader0>();
                     if (((ProtocolHeader0)rxheader).uuid.Equals(internalGuid))
                     {
                         // Someone tried to send a fake GUID or was to lazy to generate one, 
