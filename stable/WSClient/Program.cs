@@ -19,7 +19,7 @@ namespace WSClient
         static List<uint> protocolVersion = new List<uint>();
 
         static void Main(string[] args)
-        {   
+        {
             WebSocket websocket = new WebSocket("ws://127.0.0.1:8080");
 
             websocket.OnMessage += (sender, data) =>
@@ -47,37 +47,12 @@ namespace WSClient
                     }
                     else
                     {
-                        Console.WriteLine("Using: {0} by default", protocolVersion[0]);
-                        // Send the first broadcast message!
-                        // Read in an image file
-                        //string text = File.ReadAllText(@"c:\img.png");
-
-                        Protocol header = new ProtocolHeader0(protocolVersion[0]);
-                        Protocol body = new ProtocolBody0();
-
-                        ((ProtocolBody0)body).crassus = Encoding.UTF8.GetBytes(@"Hello World");
-                        ((ProtocolBody0)body).option = new Dictionary<string, string>
-                        {
-                            { "report","report_clients" }
-                        };
-                        ((ProtocolBody0)body).routing = new Dictionary<string, Guid>
-                        {
-                            { "destination",Guid.NewGuid() },
-                            { "source",Guid.NewGuid()}
-                        };
-
-                        Console.WriteLine(
-                            JsonConvert.SerializeObject(
-                                new Protocol[] { header, body }
-                            )
-                        );
-
-                        websocket.Send(
-                            JsonConvert.SerializeObject(
-                                new Protocol[] { header, body }
-                            )
-                        );
+                        Console.WriteLine("Using protocol: {0}", protocolVersion[0]);
                     }
+                }
+                else
+                {
+                    Console.WriteLine("Json RX: {0}", data.Data);
                 }
                 // Elsewhere this is a normal packet!
 

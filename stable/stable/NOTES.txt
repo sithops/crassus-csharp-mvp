@@ -22,3 +22,10 @@
 
         // It is all here, all you need is a way to reference other sockets in a broadcast
         // And also keep some form of fast lookup between connections
+
+
+
+                        if (((ProtocolHeader0)rxheader).uuid.Equals(internalGuid))
+                        {
+                            ((ProtocolHeader0)rxheader).uuid = Guid.NewGuid();
+                        }

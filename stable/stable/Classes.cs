@@ -11,6 +11,26 @@ namespace CrassusClasses
 
     }
 
+    public class CrassusState
+    {
+        private Guid guid;
+        private string guidAsString;
+
+        public CrassusState()
+        {
+            guid = Guid.NewGuid();
+            guidAsString = guid.ToString();
+        }
+
+        public Guid GetGuid() {
+            return guid;
+        }
+
+        public string GetGuidAsString()
+        {
+            return guidAsString;
+        }
+    }
 
     internal class Worker
     {
@@ -22,16 +42,16 @@ namespace CrassusClasses
     internal class WebSocketContainer
     {
         public WebSocket socket { get; internal set; }
-        public Guid internalGuid { get; internal set; }
+        public Guid InternalGuid { get; internal set; }
 
         // Initial connection detect
         public bool negotiatedVersion { get; set; }
         public uint[] protocolVersionSupport { get; set; }
-
+        public uint protocolVersionLock { get; set; }
         public WebSocketContainer(WebSocket newSocket,Guid newGuid)
         {
             socket = newSocket;
-            internalGuid = newGuid;
+            InternalGuid = newGuid;
         }
     }
 }

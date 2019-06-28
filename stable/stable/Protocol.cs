@@ -100,22 +100,22 @@ namespace CrassusProtocols
     /// </summary>
     /// 
     //A class should either have a default constructor, one constructor with arguments or a constructor marked with the JsonConstructor attribute.Path '[0].version', line 1, position 12.'
-    public class ProtocolHeader0 : Protocol
+    public class Protocol0Header : Protocol
     {
         public uint version { get; set; }
         public Guid uuid { get; set; }
         [JsonConstructor]
-        public ProtocolHeader0()
+        public Protocol0Header()
         {
             //version = (uint)newVersion;
             //uuid = Guid.Parse(newUUID);
         }
-        public ProtocolHeader0(uint newVersion,Guid newUUID)
+        public Protocol0Header(uint newVersion,Guid newUUID)
         {
             version = newVersion;
             uuid = newUUID;
         }
-        public ProtocolHeader0(uint NewVersion)
+        public Protocol0Header(uint NewVersion)
         {
             version = NewVersion;
             uuid = Guid.NewGuid();
@@ -124,21 +124,37 @@ namespace CrassusProtocols
     /// <summary>
     /// Cast and access version 1 packets
     /// </summary>
-    public class ProtocolBody0 : Protocol
+    public class Protocol0Body : Protocol
     {
-        public byte[] crassus { get; set; }
+        public string data { get; set; }
         public Dictionary<string, Guid> routing { get; set; }
         public string tag { get; set; }
         public Dictionary<string,string> option { get; set; }
-        public ProtocolBody0()
+        public Protocol0Body()
         {
             option = new Dictionary<string, string>();
             routing = new Dictionary<string, Guid>();
         }
+
+        public Protocol0Body(
+            Guid dst,
+            Guid src,
+            string payload
+        )
+        {
+            option = new Dictionary<string, string>();
+            routing = new Dictionary<string, Guid>();
+
+            data = payload;
+            routing.Add("source", src);
+            routing.Add("destination", dst);
+        }
+
     }
     /// <summary>
     /// Cast and access ProtocolX packets (Internal communication only)
     /// </summary>
+    /*
     public class ProtocolX : Protocol
     {
         public ProtocolX(uint[] protocolVersionSupport)
@@ -147,5 +163,32 @@ namespace CrassusProtocols
         }
 
         public uint[] versions { get; set; }
+    }
+    */
+
+    public class Protocol0
+    {
+        internal Protocol[] Welcome(Guid pluginUUID, Guid crassusUUID)
+        {
+            string dataBlock = JsonConvert.SerializeObject(
+                new Dictionary<string, string>
+                {
+                    { "uuid",pluginUUID.ToString() },
+                    { "crassus",crassusUUID.ToString() }
+                }
+            );
+
+            Protocol0Header header = new Protocol0Header(1, Guid.NewGuid());
+            Protocol0Body body = new Protocol0Body(
+                crassusUUID,
+                pluginUUID,
+                dataBlock
+            );
+
+            body.option.Add("report", "1");
+
+            return new Protocol[] { header, body };
+
+        }
     }
 }
