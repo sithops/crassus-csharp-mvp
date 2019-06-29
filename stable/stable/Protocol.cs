@@ -135,10 +135,15 @@ namespace CrassusProtocols
             option = new Dictionary<string, string>();
             routing = new Dictionary<string, Guid>();
         }
-
+        /// <summary>
+        /// Create a protocol v0 body object
+        /// </summary>
+        /// <param name="destinationUUID">The destination of packet</param>
+        /// <param name="sourceUUID">The source of the packet</param>
+        /// <param name="payload">The payload being sent</param>
         public Protocol0Body(
-            Guid dst,
-            Guid src,
+            Guid destinationUUID,
+            Guid sourceUUID,
             string payload
         )
         {
@@ -146,8 +151,20 @@ namespace CrassusProtocols
             routing = new Dictionary<string, Guid>();
 
             data = payload;
-            routing.Add("source", src);
-            routing.Add("destination", dst);
+            routing.Add("destination", destinationUUID);
+            routing.Add("source", sourceUUID);
+        }
+
+        public Protocol0Body(
+            Guid crassusUUID,
+            Guid pluginUUID
+        )
+        {
+            option = new Dictionary<string, string>();
+            routing = new Dictionary<string, Guid>();
+
+            routing.Add("source", crassusUUID);
+            routing.Add("destination", pluginUUID);
         }
 
     }
@@ -167,28 +184,68 @@ namespace CrassusProtocols
     */
 
     public class Protocol0
-    {
-        internal Protocol[] Welcome(Guid pluginUUID, Guid crassusUUID)
+    {      
+        /// <summary>
+        /// Create a fully encoded and serialized CrassusCommand packet
+        /// </summary>
+        /// <param name="destinationUUID">What the target for the packet is</param>
+        /// <param name="sourceUUID">What the source for the packet is</param>
+        /// <param name="arguments">An array of arguments</param>
+        /// <returns>JSON Encoded packet as string</returns>
+        public string CrassusCommand(
+            Guid destinationUUID,
+            Guid sourceUUID, 
+            string[] arguments
+        )
         {
-            string dataBlock = JsonConvert.SerializeObject(
-                new Dictionary<string, string>
-                {
-                    { "uuid",pluginUUID.ToString() },
-                    { "crassus",crassusUUID.ToString() }
-                }
-            );
+            string dataBlock = JsonConvert.SerializeObject(arguments);
 
-            Protocol0Header header = new Protocol0Header(1, Guid.NewGuid());
+            Protocol0Header header = new Protocol0Header(
+                0,
+                Guid.NewGuid()
+            );
             Protocol0Body body = new Protocol0Body(
-                crassusUUID,
-                pluginUUID,
+                destinationUUID,
+                sourceUUID,
                 dataBlock
             );
 
-            body.option.Add("report", "1");
+            return Serialize(new Protocol[] { header, body });
+        }
 
-            return new Protocol[] { header, body };
+        public string CrassusResponse(
+            Guid destinationUUID,
+            Guid sourceUUID,
+            string[] channels
+        )
+        {
+            string dataBlock = JsonConvert.SerializeObject(channels);
 
+            Protocol0Header header = new Protocol0Header(
+                0,
+                Guid.NewGuid()
+            );
+            Protocol0Body body = new Protocol0Body(
+                sourceUUID,
+                destinationUUID,
+                dataBlock
+            );
+
+            return Serialize(new Protocol[] { header, body });
+        }
+
+        private string Serialize(Protocol[] unencodedPacket)
+        {
+            string response = string.Empty;
+            try
+            {
+                response = JsonConvert.SerializeObject(unencodedPacket);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine("Error serializing JSON!\n{0}", exception.Message);
+            }
+            return response;
         }
     }
 }

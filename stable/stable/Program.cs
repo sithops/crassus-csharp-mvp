@@ -32,11 +32,18 @@ namespace Crassus
             new Dictionary<string, WebSocketContainer>();
 
         // An object to check what versions of things we have availible
+        // TODO Move this into the CrassusState 
         static readonly PacketVersion PacketStructures = new PacketVersion();
 
         [Obsolete]
         public static void Main(string[] args)
         {
+
+            crassus.AddChannel(@"CRASSUS");
+            crassus.AddChannel(@"TEST");
+            crassus.AddChannel(@"ECHO");
+            crassus.AddChannel(@"GDAXWS");
+
             int WorkerID = 0;
 
             queueSizes = new int[WorkerCount];
@@ -111,6 +118,7 @@ namespace Crassus
 
             protected override void OnMessage(MessageEventArgs Packet)
             {
+                Console.WriteLine("PACKET RECEIEVED!\n{0}",Packet.Data);
 
                 // WARNING IT MIGHT BE FASTER TO JUST START FROM A GUESS POINT!
                 int lowQueue = int.MaxValue;
@@ -132,13 +140,9 @@ namespace Crassus
             // Our ID
             int workerID = (int)MyID;
 
-            // Pre create s apce for the header and body and internal guid
+            // Pre create space for the header and body and internal guid
             Protocol rxheader = new Protocol();
             Protocol rxbody = new Protocol();
-
-            // What packet to send out
-            Protocol txheader = new Protocol();
-            Protocol txbody = new Protocol();
 
             // Register us some queues and whatnot
             Worker Workload = new Worker();
@@ -172,7 +176,6 @@ namespace Crassus
             catch (Exception exception)
             {
                 Console.WriteLine("Exception raised decoding json: {0}", exception.Message);
-                webSocket.socket.Close();
                 globalWebSockets.Remove(websocketID);
             }
 
@@ -198,25 +201,26 @@ namespace Crassus
             // If this was a blank array disconnect now
             if (webSocket.protocolVersionSupport.Length == 0)
             {
-                webSocket.socket.Close();
                 globalWebSockets.Remove(websocketID);
             }
 
             // If we got here we have some virgin we agree on
             webSocket.protocolVersionLock = webSocket.protocolVersionSupport[0];
 
+            // Our shortcut functions should be availible here
             Protocol0 castPacket = new Protocol0();
 
             // Send a welcome header 
-            Protocol[] greetingPacket = castPacket.Welcome(
+            string greetingPacket = castPacket.CrassusResponse(
+                crassus.GetGuid(),
                 webSocket.InternalGuid,
-                crassus.GetGuid()
+                new string[] {
+                    crassus.GetGuid().ToString(),
+                    webSocket.InternalGuid.ToString()
+                }
             );
 
-            string packet = JsonConvert.SerializeObject(greetingPacket);
-
-            Console.WriteLine("Sending: {0}", packet);
-            webSocket.socket.Send(packet);
+            webSocket.socket.Send(greetingPacket);
 
             // We have a fully associated plugin lets deal with it
             while (true) {
@@ -248,27 +252,58 @@ namespace Crassus
                             Console.WriteLine("Exception raised: {0}", exception.Message);
                         }
 
+                        Guid dst = ((Protocol0Body)rxbody).routing["destination"];
+
+                        if (dst.Equals(crassus.GetGuid()))
+                        {
+                            // This is a message for US!
+
+                            string[] arguments;
+                            try
+                            {
+                                arguments = JsonConvert.DeserializeObject<string[]>(((Protocol0Body)rxbody).data);
+                            }
+                            catch (Exception exception)
+                            {
+                                Console.WriteLine(
+                                    "Exception raised: {0}",
+                                    exception.Message
+                                );
+                                arguments = new string[] { "", "", "" };
+                            }
+                                
+                            if (arguments[0].Equals("SUBSCRIPTION"))
+                            {
+                                if (arguments[1].Equals("LIST"))
+                                {
+                                    string channelList = castPacket.CrassusResponse(
+                                        crassus.GetGuid(),
+                                        webSocket.InternalGuid,
+                                        crassus.ListChannels()
+                                    );
+                                    webSocket.socket.Send(channelList);
+                                }
+                                else if (arguments[1].Equals("ADD"))
+                                {
+                                    Console.WriteLine("Plugin requested joining: {0}", arguments[2]);
+                                }
+                            }
+                        }
+
                         break;
                     default:
                         Console.WriteLine(
                             "No idea what to do with version: '{0}', " +
                             "this client should not have sent this"
                         );
-                        webSocket.socket.Close();
                         globalWebSockets.Remove(websocketID);
                         continue;
                 }
 
                 // Processing time!
                 // If the destination is 00000-0000-000-00 etc then its for crassus its self
-                Console.WriteLine("Packet receieved!");
+                //Console.WriteLine("Packet receieved!");
             }
         }
-        /*
-        static string SomeCommand()
-        {
-            return new string(@"");
-        }
-        */
     }
 }
