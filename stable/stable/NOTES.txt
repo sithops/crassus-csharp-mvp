@@ -1,4 +1,9 @@
-﻿              // Maybe this is a new client, check for our internal UUID
+﻿
+        // A reference to channels we have defined 
+        private Dictionary<string, BlockingCollection<WebSocketContainer>> channels;
+
+
+              // Maybe this is a new client, check for our internal UUID
                 if (((Protocol0)NewPacket[0]).uuid.Equals(internalGuid))
                 {
                     // Ah it is 

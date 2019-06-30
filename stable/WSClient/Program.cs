@@ -16,7 +16,7 @@ namespace WSClient
 {
     class Program
     {
-        static readonly PacketVersion PacketVersions = new PacketVersion();
+        //static readonly PacketVersion PacketVersions = new PacketVersion();
         static List<uint> protocolVersion = new List<uint>();
 
         static void Main(string[] args)

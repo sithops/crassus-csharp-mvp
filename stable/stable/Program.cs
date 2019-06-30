@@ -23,13 +23,15 @@ namespace Crassus
         // A static random generator object
         static Random random = new Random();
 
-        // Optimizations for queue size lookups
-        static int[] queueSizes;
-
         // Where we place our global objects (having no faster or better way to do it)
         static List<Worker> Workers = new List<Worker>();
-        static Dictionary<string, WebSocketContainer> globalWebSockets =
-            new Dictionary<string, WebSocketContainer>();
+        static Dictionary<
+            string,
+            WebSocketContainer
+        > globalWebSockets = new Dictionary<
+            string,
+            WebSocketContainer
+        >();
 
         // An object to check what versions of things we have availible
         // TODO Move this into the CrassusState 
@@ -38,7 +40,6 @@ namespace Crassus
         [Obsolete]
         public static void Main(string[] args)
         {
-
             crassus.AddChannel(@"CRASSUS");
             crassus.AddChannel(@"TEST");
             crassus.AddChannel(@"ECHO");
@@ -46,7 +47,7 @@ namespace Crassus
 
             int WorkerID = 0;
 
-            queueSizes = new int[WorkerCount];
+            crassus.queueSizes = new int[WorkerCount];
 
             // Create the workers but do not start them yet
             for (
@@ -55,7 +56,7 @@ namespace Crassus
                 Iterator++
             )
             {
-                queueSizes[Iterator] = 0;
+                crassus.queueSizes[Iterator] = 0;
 
                 Worker Worker = new Worker();
                 Worker.Thread = new Thread(new ParameterizedThreadStart(Consumer));
@@ -164,7 +165,7 @@ namespace Crassus
             IList<JToken> dataBlockChildren = new JArray();
 
             // Decrement the queue for this websocket
-            queueSizes[workerID]--;
+            crassus.queueSizes[workerID]--;
 
             try
             {
@@ -187,7 +188,10 @@ namespace Crassus
             }
 
             // Do some logic to figure out what we want to use ... accept it
-            webSocket.protocolVersionSupport = PacketStructures.Negotiate(pluginVersions, true);
+            webSocket.protocolVersionSupport = PacketStructures.Negotiate(
+                pluginVersions,
+                true
+            );
             webSocket.negotiatedVersion = true;
 
             // Send a response with our supported versions, highest first 
@@ -231,7 +235,7 @@ namespace Crassus
                 ) = Workers[workerID].Queue.Take();
 
                 // Decrement the queue for this websocket
-                queueSizes[workerID]--;
+                crassus.queueSizes[workerID]--;
 
                 // Depending on version decrypt the packets correctly
                 switch (webSocket.protocolVersionLock)

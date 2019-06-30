@@ -12,11 +12,28 @@ namespace CrassusClasses
 
     }
 
-    internal class CrassusCache
+    internal class Switchlist : List<Channel>
     {
-        // Cache for total channel list
-        public string[] channelList { get; set; }
-        public Dictionary<string, BlockingCollection<uint>> channelsCache { get; internal set; }
+        private 
+    }
+
+    internal class Channel
+    {
+
+    }
+
+    internal class CrassusChannel
+    {
+        // Cache and primary channel list
+        public List<string[]> list { get; set; }
+        public bool listBuffer { get; set; }
+
+        // Cache and primary websocket channel store
+        public Dictionary<
+            string,
+            BlockingCollection<WebSocketContainer>
+        > websockets { get; set; }
+        public bool chanSync { get; set; }
     }
     public class CrassusState
     {
@@ -24,16 +41,25 @@ namespace CrassusClasses
         private string guidAsString;
 
         // Cache our channels and channel members
-        private CrassusCache cacheControl = new CrassusCache();
-        // A reference to channels we have defined 
-        private Dictionary<string, BlockingCollection<uint>> channels;
+        private CrassusChannel channels = new CrassusChannel();
 
+        // Cache of queueSizes
+        public int[] queueSizes { get; set; }
 
         public CrassusState()
         {
             guid = Guid.NewGuid();
             guidAsString = guid.ToString();
-            channels = new Dictionary<string, BlockingCollection<uint>>();
+
+            // Initilize the channel buffers
+            channels.list = new List<string[]> {
+                new string[] { },
+                new string[] { }
+            };
+            channels.websockets = new Dictionary<
+                string,
+                BlockingCollection<WebSocketContainer>
+            >();
         }
 
         public Guid GetGuid() {
@@ -47,24 +73,41 @@ namespace CrassusClasses
 
         internal void AddChannel(string channel)
         {
-            if (!channels.ContainsKey(channel.ToUpper()))
+            channel = channel.ToUpper();
+
+            if (
+                channels.listWait.Contains(channel) ||
+                channels.websockets.ContainsKey(channel)
+            ) {
+                return;
+            }
+
+            // Add to the cache
+            lock (channels.listWait)
             {
-                channels.Add(
-                    channel,
-                    new BlockingCollection<uint>()
-                );
+                channels.listWait.Add(channel);
+                channels.chanSync = false;
             }
         }
 
         internal string[] ListChannels()
         {
-            if (channels.)
-            lock (channelList)
+            if (channels.chanSync)
             {
-                channelList = new string[channels.Count];
-                channels.Keys.CopyTo(channelList, 0);
+                return channels.list;
             }
-            return channelList;
+            
+            return SyncList();
+        }
+
+        internal string[] SyncList()
+        {
+            lock (channels.list)
+            {
+                channels.list = new string[channels.listWait.Count];
+                channels.listWait.CopyTo(channels.list,0);
+            }
+            return channels.list;
         }
     }
 
@@ -84,7 +127,10 @@ namespace CrassusClasses
         public bool negotiatedVersion { get; set; }
         public uint[] protocolVersionSupport { get; set; }
         public uint protocolVersionLock { get; set; }
-        public WebSocketContainer(WebSocket newSocket,Guid newGuid)
+        public WebSocketContainer(
+            WebSocket newSocket,
+            Guid newGuid
+        )
         {
             socket = newSocket;
             InternalGuid = newGuid;
